@@ -25,6 +25,7 @@ th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)
 .tab-btn.active{background:#6c63ff}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
+.logout-btn{background:#f44336;border:none;padding:8px 16px;border-radius:50px;color:white;cursor:pointer;margin-top:10px}
 </style>
 </head>
 <body>
@@ -32,6 +33,7 @@ th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)
 <div class="header">
 <h1>🎮 Admin Panel</h1>
 <p>Manage withdrawals and monitor users</p>
+<button class="logout-btn" id="logoutBtn" style="display:none;">🚪 Logout</button>
 </div>
 
 <div class="stats" id="stats">
@@ -58,11 +60,65 @@ th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)
 </div>
 
 <script>
-// ===== EDIT THESE TWO LINES =====
-const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";
-const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
-// =================================
+// ============================================
+// SUPABASE CONFIGURATION - EDIT THESE TWO LINES
+// ============================================
+const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";  // ← Your Project URL here
+const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";              // ← Your Publishable Key here
+// ============================================
 
+// ============================================
+// ADMIN PASSWORD PROTECTION - EDIT THIS LINE
+// ============================================
+const ADMIN_PASSWORD = "Rezaye2006.";  // ← Change this to your own password!
+// ============================================
+
+// ========== PASSWORD PROTECTION FUNCTION ==========
+function protectAdminPanel() {
+  // Check if already authenticated in this session
+  const isAuthenticated = sessionStorage.getItem('admin_authenticated');
+  
+  if (isAuthenticated === 'true') {
+    // Show logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+    return true;
+  }
+  
+  // Ask for password
+  let password = prompt("🔐 Enter Admin Password:");
+  
+  if (password === ADMIN_PASSWORD) {
+    sessionStorage.setItem('admin_authenticated', 'true');
+    // Show logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+    return true;
+  } else {
+    // Wrong password - block access
+    document.body.innerHTML = `
+      <div style="text-align: center; padding: 50px; background: #0f121c; min-height: 100vh;">
+        <h1 style="color: #f44336;">🚫 Access Denied</h1>
+        <p style="margin-top: 20px;">You don't have permission to view this page.</p>
+        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #6c63ff; border: none; border-radius: 10px; color: white; cursor: pointer;">Try Again</button>
+      </div>
+    `;
+    return false;
+  }
+}
+
+// ========== LOGOUT FUNCTION ==========
+function logout() {
+  sessionStorage.removeItem('admin_authenticated');
+  location.reload();
+}
+
+// ========== RUN PROTECTION FIRST ==========
+if (!protectAdminPanel()) {
+  throw new Error("Access denied");
+}
+
+// ========== MAIN ADMIN FUNCTIONS ==========
 async function loadStats() {
   try {
     const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id`, {
@@ -216,9 +272,9 @@ async function loadUsers() {
         <td>🎥 ${users[i].watched_count}</td>
         <td>👥 ${users[i].referral_coins || 0}</td>
         <td>${new Date(users[i].created_at).toLocaleDateString()}</td>
-      </tr>`;
+       </tr>`;
     }
-    html += '</tbody></table>';
+    html += '</tbody></tr>';
     document.getElementById("usersList").innerHTML = html;
   } catch(e) { console.error(e); }
 }
@@ -242,6 +298,10 @@ function initTabs() {
   });
 }
 
+// Setup logout button
+document.getElementById("logoutBtn").onclick = () => logout();
+
+// Load all data
 loadStats();
 loadPendingRequests();
 loadUsers();
