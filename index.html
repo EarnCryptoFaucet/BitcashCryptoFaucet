@@ -325,6 +325,75 @@ hr {
   margin-top: 10px;
   text-align: center;
 }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 3000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-box {
+  background: linear-gradient(145deg, #1a1e2b, #0f121c);
+  padding: 25px;
+  border-radius: 30px;
+  text-align: center;
+  border: 1px solid rgba(108, 99, 255, 0.5);
+  min-width: 300px;
+  max-width: 90%;
+}
+
+.modal-box input, .modal-box select {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  font-size: 16px;
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  width: 100%;
+  margin: 10px 0;
+}
+
+.modal-box input:focus {
+  outline: none;
+  border-color: #6c63ff;
+}
+
+.modal-btn {
+  background: linear-gradient(135deg, #6c63ff, #3f37c9);
+  padding: 12px 24px;
+  border: none;
+  border-radius: 50px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.modal-btn-cancel {
+  background: #2a2e45;
+  margin-top: 5px;
+}
+
+.modal-title {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.modal-hint {
+  font-size: 12px;
+  color: #ffd700;
+  margin-bottom: 10px;
+}
 </style>
 </head>
 <body>
@@ -351,7 +420,6 @@ hr {
         <p style="margin: 10px 0; opacity: 0.8;">🔥 Each ad = <strong style="color: #ffd700;">10 Coins</strong> 🔥</p>
         <p style="font-size: 13px; opacity: 0.7;">💰 Watch more, earn more! No limits!</p>
         
-        <!-- Coin Rate Display -->
         <div class="coin-rate">
           💱 <strong>10 Coins = 0.0001 DOGE</strong> 💱
         </div>
@@ -420,12 +488,12 @@ hr {
         
         <h4 style="margin-bottom: 15px;">💸 Withdraw Options</h4>
         
-        <div class="withdraw-option" data-type="faucetpay" data-min="5000">
+        <div class="withdraw-option" id="faucetpayOption" data-type="faucetpay" data-min="5000">
           <h4>💧 FaucetPay Wallet</h4>
           <p style="font-size: 12px; opacity: 0.7;">Min: <strong>5,000 coins</strong> | Processing: 24 hours</p>
         </div>
         
-        <div class="withdraw-option" data-type="direct" data-min="10000">
+        <div class="withdraw-option" id="directOption" data-type="direct" data-min="10000">
           <h4>💰 Direct Wallet (DOGE)</h4>
           <p style="font-size: 12px; opacity: 0.7;">Min: <strong>10,000 coins</strong> | 24-48 hours</p>
         </div>
@@ -460,7 +528,7 @@ hr {
 // SUPABASE CONFIGURATION - EDIT THESE TWO LINES
 // ============================================
 const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";
-const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
+const SUPABASE_KEY = "sb_publishable_SFZv_qcbds01sv1cHitKZw_V7W25RIn";
 // ============================================
 
 // ========== BOT CONFIGURATION ==========
@@ -497,10 +565,8 @@ async function loadUserFromDB(telegramId) {
     });
     
     const users = await response.json();
-    console.log("DB Response:", users);
     
     if (users && users.length > 0) {
-      // User exists - load their data
       userData = {
         telegram_id: users[0].telegram_id,
         username: users[0].username,
@@ -513,10 +579,8 @@ async function loadUserFromDB(telegramId) {
       };
       console.log("User loaded! Total coins:", userData.total_coins);
     } else {
-      // New user - create
       console.log("New user, creating...");
       await createNewUser(telegramId);
-      // After creating, load again
       await loadUserFromDB(telegramId);
       return;
     }
@@ -561,7 +625,7 @@ async function createNewUser(telegramId) {
 
 async function updateUserInDB() {
   try {
-    console.log("Saving to DB - Coins:", userData.total_coins, "Watched:", userData.watched_count);
+    console.log("Saving to DB - Coins:", userData.total_coins);
     
     const response = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}`, {
       method: 'PATCH',
@@ -581,8 +645,7 @@ async function updateUserInDB() {
     if (response.ok) {
       console.log("✅ Saved successfully to DB!");
     } else {
-      const errorText = await response.text();
-      console.error("❌ Save failed:", errorText);
+      console.error("❌ Save failed:", await response.text());
     }
   } catch (error) {
     console.error("Error updating user:", error);
@@ -717,6 +780,155 @@ function claimDailyBonusReward() {
   }, 500);
 }
 
+// ========== WITHDRAW MODALS ==========
+function showFaucetPayModal() {
+  const minAmount = 5000;
+  
+  if (userData.total_coins < minAmount) {
+    showMessage(`❌ You need at least ${minAmount} coins for FaucetPay withdrawal!`);
+    return;
+  }
+  
+  let modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-title">💧 FaucetPay Withdrawal</div>
+      <div class="modal-hint">📧 Enter your FaucetPay email address (example: adsense@gmail.com)</div>
+      <input type="email" id="walletInput" placeholder="Your FaucetPay Email" autocomplete="off">
+      <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount} coins)</div>
+      <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins}">
+      <button class="modal-btn" id="confirmWithdraw">Confirm Withdrawal</button>
+      <button class="modal-btn modal-btn-cancel" id="cancelModal">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  document.getElementById('confirmWithdraw').onclick = async () => {
+    let walletAddress = document.getElementById('walletInput').value.trim();
+    let amount = parseInt(document.getElementById('amountInput').value);
+    
+    if (!walletAddress) {
+      showMessage("❌ Please enter your FaucetPay email!");
+      return;
+    }
+    
+    if (!walletAddress.includes('@') || !walletAddress.includes('.')) {
+      showMessage("❌ Please enter a valid email address!");
+      return;
+    }
+    
+    if (isNaN(amount) || amount < minAmount) {
+      showMessage(`❌ Minimum withdrawal amount is ${minAmount} coins!`);
+      return;
+    }
+    
+    if (amount > userData.total_coins) {
+      showMessage("❌ You don't have enough coins!");
+      return;
+    }
+    
+    let success = await saveWithdrawRequest('faucetpay', amount, walletAddress);
+    
+    if (success) {
+      showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
+      
+      let history = JSON.parse(localStorage.getItem('withdraw_history') || '[]');
+      history.push({
+        id: Date.now(),
+        type: 'faucetpay',
+        amount: amount,
+        status: 'pending',
+        date: new Date().toLocaleString()
+      });
+      localStorage.setItem('withdraw_history', JSON.stringify(history));
+      renderHistory();
+      updateUI();
+    } else {
+      showMessage("❌ Failed to submit withdrawal request!");
+    }
+    
+    modal.remove();
+  };
+  
+  document.getElementById('cancelModal').onclick = () => modal.remove();
+}
+
+function showDirectWalletModal() {
+  const minAmount = 10000;
+  
+  if (userData.total_coins < minAmount) {
+    showMessage(`❌ You need at least ${minAmount} coins for Direct Wallet withdrawal!`);
+    return;
+  }
+  
+  let modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-title">💰 Direct Wallet Withdrawal (DOGE)</div>
+      <div class="modal-hint">🐕 Enter your DOGE wallet address (Only DOGE addresses are accepted)</div>
+      <input type="text" id="walletInput" placeholder="Your DOGE Wallet Address" autocomplete="off">
+      <div class="modal-hint">Example: Dxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+      <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount} coins)</div>
+      <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins}">
+      <button class="modal-btn" id="confirmWithdraw">Confirm Withdrawal</button>
+      <button class="modal-btn modal-btn-cancel" id="cancelModal">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  document.getElementById('confirmWithdraw').onclick = async () => {
+    let walletAddress = document.getElementById('walletInput').value.trim();
+    let amount = parseInt(document.getElementById('amountInput').value);
+    
+    if (!walletAddress) {
+      showMessage("❌ Please enter your DOGE wallet address!");
+      return;
+    }
+    
+    // Basic DOGE address validation (starts with D or A)
+    if (!walletAddress.match(/^[DA][a-km-zA-HJ-NP-Z1-9]{25,34}$/)) {
+      showMessage("❌ Invalid DOGE wallet address! Please enter a valid DOGE address.");
+      return;
+    }
+    
+    if (isNaN(amount) || amount < minAmount) {
+      showMessage(`❌ Minimum withdrawal amount is ${minAmount} coins!`);
+      return;
+    }
+    
+    if (amount > userData.total_coins) {
+      showMessage("❌ You don't have enough coins!");
+      return;
+    }
+    
+    let success = await saveWithdrawRequest('direct', amount, walletAddress);
+    
+    if (success) {
+      showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
+      
+      let history = JSON.parse(localStorage.getItem('withdraw_history') || '[]');
+      history.push({
+        id: Date.now(),
+        type: 'direct',
+        amount: amount,
+        status: 'pending',
+        date: new Date().toLocaleString()
+      });
+      localStorage.setItem('withdraw_history', JSON.stringify(history));
+      renderHistory();
+      updateUI();
+    } else {
+      showMessage("❌ Failed to submit withdrawal request!");
+    }
+    
+    modal.remove();
+  };
+  
+  document.getElementById('cancelModal').onclick = () => modal.remove();
+}
+
 // ========== CAPTCHA ==========
 function showCaptcha(callback) {
   let a = Math.floor(Math.random() * 10) + 1;
@@ -778,36 +990,6 @@ function watchAdReward() {
     updateUI();
     showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
   }, 1500);
-}
-
-// ========== WITHDRAW ==========
-async function requestWithdraw(type, minAmount) {
-  if (userData.total_coins < minAmount) {
-    showMessage(`❌ You need at least ${minAmount} coins for ${type === 'faucetpay' ? 'FaucetPay' : 'Direct Wallet'}!`);
-    return;
-  }
-  
-  let walletAddress = prompt("Enter your wallet address:");
-  if (!walletAddress) return;
-  
-  let success = await saveWithdrawRequest(type, minAmount, walletAddress);
-  
-  if (success) {
-    showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
-    
-    let history = JSON.parse(localStorage.getItem('withdraw_history') || '[]');
-    history.push({
-      id: Date.now(),
-      type: type,
-      amount: minAmount,
-      status: 'pending',
-      date: new Date().toLocaleString()
-    });
-    localStorage.setItem('withdraw_history', JSON.stringify(history));
-    renderHistory();
-  } else {
-    showMessage("❌ Failed to submit withdrawal request!");
-  }
 }
 
 // ========== REFERRAL ==========
@@ -1000,13 +1182,8 @@ async function init() {
   document.getElementById("shareInviteBtn").onclick = () => shareInviteLink();
   document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithCaptcha();
   
-  document.querySelectorAll(".withdraw-option").forEach(opt => {
-    opt.onclick = () => {
-      let type = opt.getAttribute("data-type");
-      let min = parseInt(opt.getAttribute("data-min"));
-      requestWithdraw(type, min);
-    };
-  });
+  document.getElementById("faucetpayOption").onclick = () => showFaucetPayModal();
+  document.getElementById("directOption").onclick = () => showDirectWalletModal();
   
   setInterval(() => updateDailyBonusUI(), 60000);
 }
