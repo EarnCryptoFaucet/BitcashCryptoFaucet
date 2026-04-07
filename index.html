@@ -536,6 +536,7 @@ const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
 const DOGE_RATE = 0.0001;
+const WITHDRAW_HISTORY_DAYS = 3; // حذف از نمایش بعد از 3 روز
 
 // ========== USER DATA ==========
 let userData = {
@@ -698,6 +699,7 @@ async function loadReferralsFromDB() {
 
 async function saveReferral(referredUserId) {
   try {
+    // Update the new user with referrer ID
     await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
       method: 'PATCH',
       headers: {
@@ -710,11 +712,15 @@ async function saveReferral(referredUserId) {
       })
     });
     
+    // Add bonus to referrer
     userData.total_coins += REFERRAL_BONUS;
     userData.referral_coins += REFERRAL_BONUS;
     await updateUserInDB();
     updateUI();
     loadReferralsFromDB();
+    
+    // Show congratulatory message
+    showMessage(`🎉 Congratulations! +${REFERRAL_BONUS} referral bonus coins added to your account!`);
   } catch (error) {
     console.error("Error saving referral:", error);
   }
@@ -796,7 +802,7 @@ function showFaucetPayModal() {
   modal.innerHTML = `
     <div class="modal-box">
       <div class="modal-title">💧 FaucetPay Withdrawal</div>
-      <div class="modal-hint">📧 Enter your FaucetPay email address (example: adsense@gmail.com)</div>
+      <div class="modal-hint">📧 Enter your FaucetPay email address (example: example@gmail.com)</div>
       <input type="email" id="walletInput" placeholder="Your FaucetPay Email" autocomplete="off">
       <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount} coins)</div>
       <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins}">
@@ -1012,13 +1018,13 @@ function checkReferral() {
   if (startParam && startParam.startsWith('ref_')) {
     const referrerId = parseInt(startParam.replace('ref_', ''));
     
+    // Prevent self-referral (user cannot invite themselves)
     if (referrerId !== userData.telegram_id) {
       fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}&select=referred_by`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
       }).then(res => res.json()).then(data => {
         if (!data[0]?.referred_by) {
           saveReferral(userData.telegram_id);
-          showMessage(`🎉 Referral bonus! +${REFERRAL_BONUS} coins!`);
         }
       });
     }
@@ -1056,9 +1062,22 @@ async function renderHistory() {
       return;
     }
     
+    // Filter out approved withdrawals older than 3 days from display only
+    const now = new Date();
     let html = '';
+    let visibleCount = 0;
+    
     for (let i = 0; i < withdrawals.length; i++) {
       let w = withdrawals[i];
+      let createdDate = new Date(w.created_at);
+      let daysDiff = (now - createdDate) / (1000 * 60 * 60 * 24);
+      
+      // Hide approved withdrawals older than 3 days (but keep in database)
+      if (w.status === 'approved' && daysDiff > WITHDRAW_HISTORY_DAYS) {
+        continue; // Skip showing this item
+      }
+      
+      visibleCount++;
       let statusClass = 'history-status-pending';
       let statusText = '⏳ Pending';
       
@@ -1081,7 +1100,12 @@ async function renderHistory() {
         </div>
       `;
     }
-    container.innerHTML = html;
+    
+    if (visibleCount === 0) {
+      container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No withdrawals yet</p>';
+    } else {
+      container.innerHTML = html;
+    }
   } catch (error) {
     console.error("Error loading withdrawal history:", error);
     container.innerHTML = '<p style="text-align: center; opacity: 0.5;">Error loading history</p>';
@@ -1181,6 +1205,8 @@ async function init() {
   document.getElementById("directOption").onclick = () => showDirectWalletModal();
   
   setInterval(() => updateDailyBonusUI(), 60000);
+  // Refresh history every 5 minutes to check for 3-day old removals
+  setInterval(() => renderHistory(), 300000);
 }
 
 init();
