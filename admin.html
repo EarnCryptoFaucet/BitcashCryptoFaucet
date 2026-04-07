@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - Mini App</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui;background:#0f121c;color:#fff;padding:20px}
+.container{max-width:1200px;margin:0 auto}
+.header{background:linear-gradient(135deg,#6c63ff,#3f37c9);padding:20px;border-radius:20px;margin-bottom:20px;text-align:center}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:30px}
+.stat-card{background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;text-align:center}
+.section-title{font-size:24px;margin:20px 0}
+.request-card{background:rgba(255,255,255,0.08);padding:20px;border-radius:20px;margin-bottom:15px;border-left:4px solid #ffd966}
+.request-card.pending{border-left-color:#ffd966}
+.request-card.approved{border-left-color:#4caf50}
+.request-card.rejected{border-left-color:#f44336}
+.btn-approve{background:#4caf50;border:none;padding:10px 20px;border-radius:10px;color:white;cursor:pointer;margin-right:10px}
+.btn-reject{background:#f44336;border:none;padding:10px 20px;border-radius:10px;color:white;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}
+.tabs{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.tab-btn{background:#2a2e45;border:none;padding:12px 24px;border-radius:50px;color:white;cursor:pointer}
+.tab-btn.active{background:#6c63ff}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>🎮 Admin Panel</h1>
+<p>Manage withdrawals and monitor users</p>
+</div>
+
+<div class="stats" id="stats">
+<div class="stat-card">📊 Loading...</div>
+</div>
+
+<div class="tabs">
+<button class="tab-btn active" data-tab="pending">⏳ Pending Requests</button>
+<button class="tab-btn" data-tab="history">📜 Request History</button>
+<button class="tab-btn" data-tab="users">👥 Users</button>
+</div>
+
+<div id="pending-tab" class="tab-pane active">
+<div id="pendingRequests">Loading...</div>
+</div>
+
+<div id="history-tab" class="tab-pane">
+<div id="historyRequests">Loading...</div>
+</div>
+
+<div id="users-tab" class="tab-pane">
+<div id="usersList">Loading...</div>
+</div>
+</div>
+
+<script>
+// ===== EDIT THESE TWO LINES =====
+const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+const SUPABASE_KEY = "sb_publishable_YOUR_KEY";
+// =================================
+
+async function loadStats() {
+  try {
+    const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const users = await usersRes.json();
+    
+    const pendingRes = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?select=id&status=eq.pending`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const pending = await pendingRes.json();
+    
+    const totalCoinsRes = await fetch(`${SUPABASE_URL}/rest/v1/users?select=total_coins`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const allUsers = await totalCoinsRes.json();
+    const totalCoins = allUsers.reduce((sum, u) => sum + (u.total_coins || 0), 0);
+    
+    document.getElementById("stats").innerHTML = `
+      <div class="stat-card">👥 Total Users: ${users.length}</div>
+      <div class="stat-card">⏳ Pending: ${pending.length}</div>
+      <div class="stat-card">💰 Total Coins: ${totalCoins.toLocaleString()}</div>
+    `;
+  } catch(e) { console.error(e); }
+}
+
+async function loadPendingRequests() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?select=*&status=eq.pending&order=created_at.asc`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const requests = await res.json();
+    
+    if(requests.length === 0) {
+      document.getElementById("pendingRequests").innerHTML = '<p style="text-align:center">✅ No pending requests</p>';
+      return;
+    }
+    
+    let html = '';
+    for(let req of requests) {
+      html += `
+        <div class="request-card pending">
+          <p><strong>👤 User:</strong> ${req.user_name || req.user_id}</p>
+          <p><strong>💰 Amount:</strong> ${req.amount} coins</p>
+          <p><strong>💳 Wallet:</strong> ${req.wallet_address}</p>
+          <p><strong>📅 Date:</strong> ${new Date(req.created_at).toLocaleString()}</p>
+          <button class="btn-approve" onclick="approveRequest(${req.id}, ${req.amount}, ${req.user_id})">✅ Approve</button>
+          <button class="btn-reject" onclick="rejectRequest(${req.id}, ${req.user_id})">❌ Reject</button>
+        </div>
+      `;
+    }
+    document.getElementById("pendingRequests").innerHTML = html;
+  } catch(e) { console.error(e); }
+}
+
+async function loadHistoryRequests() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?select=*&status=neq.pending&order=created_at.desc&limit=50`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const requests = await res.json();
+    
+    if(requests.length === 0) {
+      document.getElementById("historyRequests").innerHTML = '<p style="text-align:center">No history yet</p>';
+      return;
+    }
+    
+    let html = '';
+    for(let req of requests) {
+      let statusColor = req.status === 'approved' ? '#4caf50' : '#f44336';
+      html += `
+        <div class="request-card ${req.status}">
+          <p><strong>👤 User:</strong> ${req.user_name || req.user_id}</p>
+          <p><strong>💰 Amount:</strong> ${req.amount} coins</p>
+          <p><strong>💳 Wallet:</strong> ${req.wallet_address}</p>
+          <p><strong>📅 Date:</strong> ${new Date(req.created_at).toLocaleString()}</p>
+          <p><strong>📌 Status:</strong> <span style="color:${statusColor}">${req.status.toUpperCase()}</span></p>
+          ${req.processed_at ? `<p>✅ Processed: ${new Date(req.processed_at).toLocaleString()}</p>` : ''}
+        </div>
+      `;
+    }
+    document.getElementById("historyRequests").innerHTML = html;
+  } catch(e) { console.error(e); }
+}
+
+async function approveRequest(requestId, amount, userId) {
+  if(!confirm(`Approve withdrawal of ${amount} coins? Coins will be deducted from user.`)) return;
+  
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}&select=total_coins`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const user = await userRes.json();
+    const newCoins = (user[0]?.total_coins || 0) - amount;
+    
+    await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ total_coins: newCoins })
+    });
+    
+    await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?id=eq.${requestId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ status: 'approved', processed_at: new Date().toISOString() })
+    });
+    
+    alert("✅ Request approved! Coins deducted.");
+    loadPendingRequests();
+    loadHistoryRequests();
+    loadStats();
+    loadUsers();
+  } catch(e) { console.error(e); alert("Error: " + e.message); }
+}
+
+async function rejectRequest(requestId, userId) {
+  if(!confirm("Reject this request? No coins will be deducted.")) return;
+  
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?id=eq.${requestId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ status: 'rejected', processed_at: new Date().toISOString(), admin_note: 'Rejected by admin' })
+    });
+    
+    alert("❌ Request rejected.");
+    loadPendingRequests();
+    loadHistoryRequests();
+    loadStats();
+  } catch(e) { console.error(e); alert("Error: " + e.message); }
+}
+
+async function loadUsers() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?select=*&order=total_coins.desc&limit=50`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const users = await res.json();
+    
+    if(users.length === 0) {
+      document.getElementById("usersList").innerHTML = '<p>No users yet</p>';
+      return;
+    }
+    
+    let html = '<table><thead><tr><th>#</th><th>User</th><th>Coins</th><th>Watched</th><th>Referral Coins</th><th>Joined</th></tr></thead><tbody>';
+    for(let i=0; i<users.length; i++) {
+      html += `<tr>
+        <td>${i+1}</td>
+        <td>${users[i].first_name || 'User'}<br><span style="font-size:11px">ID: ${users[i].telegram_id}</span></td>
+        <td>💰 ${users[i].total_coins}</td>
+        <td>🎥 ${users[i].watched_count}</td>
+        <td>👥 ${users[i].referral_coins || 0}</td>
+        <td>${new Date(users[i].created_at).toLocaleDateString()}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById("usersList").innerHTML = html;
+  } catch(e) { console.error(e); }
+}
+
+function initTabs() {
+  const btns = document.querySelectorAll(".tab-btn");
+  const panes = document.querySelectorAll(".tab-pane");
+  
+  btns.forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-tab");
+      btns.forEach(b => b.classList.remove("active"));
+      panes.forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(id + "-tab").classList.add("active");
+      
+      if(id === "pending") loadPendingRequests();
+      if(id === "history") loadHistoryRequests();
+      if(id === "users") loadUsers();
+    };
+  });
+}
+
+loadStats();
+loadPendingRequests();
+loadUsers();
+initTabs();
+</script>
+</body>
+</html>
