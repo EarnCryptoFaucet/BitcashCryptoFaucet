@@ -326,7 +326,6 @@ hr {
   text-align: center;
 }
 
-/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -402,7 +401,6 @@ hr {
     
     <!-- Home Tab -->
     <div class="tab-pane active" id="home-tab">
-      <!-- Daily Bonus Card -->
       <div class="card daily-bonus-card">
         <span style="font-size: 40px;">🎁</span>
         <h3>Daily Bonus</h3>
@@ -413,7 +411,6 @@ hr {
         <div id="dailyCountdown" class="daily-countdown"></div>
       </div>
       
-      <!-- Watch Ad Card -->
       <div class="card" style="text-align: center;">
         <span style="font-size: 64px;">🎬</span>
         <h2 style="margin: 10px 0;">Watch & Earn Coins!</h2>
@@ -525,7 +522,7 @@ hr {
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 // ============================================
-// SUPABASE CONFIGURATION - EDIT THESE TWO LINES
+// SUPABASE CONFIGURATION
 // ============================================
 const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
@@ -588,6 +585,7 @@ async function loadUserFromDB(telegramId) {
     updateUI();
     loadReferralsFromDB();
     updateDailyBonusUI();
+    renderHistory();
   } catch (error) {
     console.error("Error loading user:", error);
     showMessage("❌ Database connection error!");
@@ -670,6 +668,10 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
         status: 'pending'
       })
     });
+    
+    if (response.ok) {
+      await renderHistory();
+    }
     return response.ok;
   } catch (error) {
     console.error("Error saving withdraw request:", error);
@@ -832,17 +834,6 @@ function showFaucetPayModal() {
     
     if (success) {
       showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
-      
-      let history = JSON.parse(localStorage.getItem('withdraw_history') || '[]');
-      history.push({
-        id: Date.now(),
-        type: 'faucetpay',
-        amount: amount,
-        status: 'pending',
-        date: new Date().toLocaleString()
-      });
-      localStorage.setItem('withdraw_history', JSON.stringify(history));
-      renderHistory();
       updateUI();
     } else {
       showMessage("❌ Failed to submit withdrawal request!");
@@ -887,7 +878,6 @@ function showDirectWalletModal() {
       return;
     }
     
-    // Basic DOGE address validation (starts with D or A)
     if (!walletAddress.match(/^[DA][a-km-zA-HJ-NP-Z1-9]{25,34}$/)) {
       showMessage("❌ Invalid DOGE wallet address! Please enter a valid DOGE address.");
       return;
@@ -907,17 +897,6 @@ function showDirectWalletModal() {
     
     if (success) {
       showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
-      
-      let history = JSON.parse(localStorage.getItem('withdraw_history') || '[]');
-      history.push({
-        id: Date.now(),
-        type: 'direct',
-        amount: amount,
-        status: 'pending',
-        date: new Date().toLocaleString()
-      });
-      localStorage.setItem('withdraw_history', JSON.stringify(history));
-      renderHistory();
       updateUI();
     } else {
       showMessage("❌ Failed to submit withdrawal request!");
@@ -1059,38 +1038,54 @@ function updateUI() {
   document.getElementById("dogeValue").innerText = dogeValue.toFixed(6);
 }
 
-function renderHistory() {
-  let history = JSON.parse(localStorage.getItem('withdraw_history') || '[]');
+async function renderHistory() {
   let container = document.getElementById("historyContainer");
   
-  if (history.length === 0) {
-    container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No withdrawals yet</p>';
-    return;
-  }
-  
-  let html = '';
-  for (let i = history.length - 1; i >= 0; i--) {
-    let h = history[i];
-    let statusClass = 'history-status-pending';
-    let statusText = '⏳ Pending';
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?user_id=eq.${userData.telegram_id}&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
     
-    if (h.status === 'completed') {
-      statusClass = 'history-status-completed';
-      statusText = '✅ Completed';
-    } else if (h.status === 'rejected') {
-      statusClass = 'history-status-rejected';
-      statusText = '❌ Rejected';
+    const withdrawals = await response.json();
+    
+    if (!withdrawals || withdrawals.length === 0) {
+      container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No withdrawals yet</p>';
+      return;
     }
     
-    html += `
-      <div class="history-item">
-        <div><strong>💰 ${h.amount} coins</strong> - ${h.type === 'faucetpay' ? 'FaucetPay' : 'Direct Wallet'}</div>
-        <div class="${statusClass}">${statusText}</div>
-        <div class="history-date">📅 ${h.date}</div>
-      </div>
-    `;
+    let html = '';
+    for (let i = 0; i < withdrawals.length; i++) {
+      let w = withdrawals[i];
+      let statusClass = 'history-status-pending';
+      let statusText = '⏳ Pending';
+      
+      if (w.status === 'approved') {
+        statusClass = 'history-status-completed';
+        statusText = '✅ Approved';
+      } else if (w.status === 'rejected') {
+        statusClass = 'history-status-rejected';
+        statusText = '❌ Rejected';
+      }
+      
+      let typeName = w.wallet_type === 'faucetpay' ? '💧 FaucetPay' : '💰 Direct Wallet';
+      
+      html += `
+        <div class="history-item">
+          <div><strong>💰 ${w.amount} coins</strong> - ${typeName}</div>
+          <div class="${statusClass}">${statusText}</div>
+          <div class="history-date">📅 ${new Date(w.created_at).toLocaleString()}</div>
+          ${w.processed_at ? `<div class="history-date">✅ Processed: ${new Date(w.processed_at).toLocaleString()}</div>` : ''}
+        </div>
+      `;
+    }
+    container.innerHTML = html;
+  } catch (error) {
+    console.error("Error loading withdrawal history:", error);
+    container.innerHTML = '<p style="text-align: center; opacity: 0.5;">Error loading history</p>';
   }
-  container.innerHTML = html;
 }
 
 function renderReferralList() {
