@@ -446,6 +446,11 @@ hr {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.task-btn.verifying {
+  background: #ff9800;
+  cursor: wait;
+}
 </style>
 </head>
 <body>
@@ -491,7 +496,7 @@ hr {
       
       <!-- Tasks Section -->
       <div class="tasks-section">
-        <h3 style="margin-bottom: 15px;">📋 Daily Tasks</h3>
+        <h3 style="margin-bottom: 15px;">📋 Tasks</h3>
         
         <!-- Task 1: Join Channel -->
         <div class="task-card" id="taskJoinChannel">
@@ -598,6 +603,7 @@ const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
 
 // ========== BOT CONFIGURATION ==========
 const BOT_USERNAME = "Bitcashcryptofaucet_bot";
+const BOT_TOKEN = "8616969784:AAHC02ts98Pa4JIac9HvwPG0mQU2OjRI2PU";  // ← PUT YOUR BOT TOKEN HERE!
 const CHANNEL_USERNAME = "bitcashcryptofaucet";
 const CHANNEL_LINK = "https://t.me/bitcashcryptofaucet";
 const TASK_JOIN_CHANNEL_REWARD = 20;
@@ -809,11 +815,11 @@ function updateTaskUI() {
     joinBtn.textContent = "✅ Completed";
     joinBtn.classList.add("completed");
     joinBtn.disabled = true;
-    joinBtn.onclick = null;
     taskCard.style.opacity = "0.7";
   } else {
     joinBtn.textContent = "Join & Claim";
     joinBtn.classList.remove("completed");
+    joinBtn.classList.remove("verifying");
     joinBtn.disabled = false;
     taskCard.style.opacity = "1";
   }
@@ -825,24 +831,22 @@ async function checkChannelMembershipAndReward() {
     return;
   }
   
+  const joinBtn = document.getElementById("joinChannelBtn");
+  
   // Open the channel in Telegram
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.openTelegramLink(CHANNEL_LINK);
-    showMessage("📢 Please join the channel, then click 'Verify' again!");
+    showMessage("📢 Please join the channel, then click 'Verify'!");
     
-    // Change button to verify mode
-    const joinBtn = document.getElementById("joinChannelBtn");
-    joinBtn.textContent = "✅ Verify Membership";
+    joinBtn.textContent = "🔄 Verify Membership";
+    joinBtn.classList.add("verifying");
     joinBtn.onclick = () => verifyChannelMembership();
-    
-    // Store in session that channel was opened
-    sessionStorage.setItem('channel_opened_' + userData.telegram_id, 'true');
   } else {
     window.open(CHANNEL_LINK, '_blank');
     showMessage("📢 Please join the channel, then click 'Verify'!");
     
-    const joinBtn = document.getElementById("joinChannelBtn");
-    joinBtn.textContent = "✅ Verify Membership";
+    joinBtn.textContent = "🔄 Verify Membership";
+    joinBtn.classList.add("verifying");
     joinBtn.onclick = () => verifyChannelMembership();
   }
 }
@@ -854,18 +858,52 @@ async function verifyChannelMembership() {
     return;
   }
   
+  const joinBtn = document.getElementById("joinChannelBtn");
+  joinBtn.textContent = "⏳ Checking...";
+  joinBtn.disabled = true;
+  
   showMessage("🔍 Verifying channel membership...");
   
-  // Since direct API check requires bot to be admin,
-  // we use a simple verification that requires user confirmation
-  const confirmed = confirm(
-    "📢 Have you joined @bitcashcryptofaucet channel?\n\n" +
-    "✅ Click OK after you have joined to claim 20 coins bonus!\n\n" +
-    "⚠️ Make sure you are a member of the channel before verifying."
-  );
-  
-  if (confirmed) {
-    // Mark task as completed
+  try {
+    // Method 1: Check via Telegram Bot API (requires backend)
+    // Since we don't have a backend, we'll use a different approach
+    
+    // For now, we'll use a manual verification with a unique code
+    // The user needs to send a specific command to the bot
+    
+    showMessage("📢 To verify: Send /verify to @Bitcashcryptofaucet_bot after joining the channel!");
+    
+    // Open bot chat for verification
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=verify_${userData.telegram_id}`);
+    } else {
+      window.open(`https://t.me/${BOT_USERNAME}?start=verify_${userData.telegram_id}`, '_blank');
+    }
+    
+    // Reset button after 10 seconds
+    setTimeout(() => {
+      if (!userData.task_join_channel) {
+        joinBtn.textContent = "Join & Claim";
+        joinBtn.classList.remove("verifying");
+        joinBtn.disabled = false;
+        joinBtn.onclick = () => checkChannelMembershipAndReward();
+      }
+    }, 10000);
+    
+  } catch (error) {
+    console.error("Error verifying membership:", error);
+    showMessage("❌ Verification failed. Please contact support.");
+    joinBtn.textContent = "Join & Claim";
+    joinBtn.classList.remove("verifying");
+    joinBtn.disabled = false;
+    joinBtn.onclick = () => checkChannelMembershipAndReward();
+  }
+}
+
+// Function to be called from bot webhook or polling
+// This would be triggered when user sends /verify to bot
+async function completeTaskVerification(userId) {
+  if (userId == userData.telegram_id && !userData.task_join_channel) {
     userData.task_join_channel = true;
     userData.total_coins += TASK_JOIN_CHANNEL_REWARD;
     
@@ -874,15 +912,13 @@ async function verifyChannelMembership() {
     updateTaskUI();
     
     showMessage(`🎉 Congratulations! +${TASK_JOIN_CHANNEL_REWARD} coins added for joining channel!`);
-  } else {
-    showMessage("❌ Please join the channel first, then click verify again.");
-    
-    // Reset button
-    const joinBtn = document.getElementById("joinChannelBtn");
-    joinBtn.textContent = "Join & Claim";
-    joinBtn.onclick = () => checkChannelMembershipAndReward();
+    return true;
   }
+  return false;
 }
+
+// Expose function globally for bot webhook
+window.completeTaskVerification = completeTaskVerification;
 
 // ========== DAILY BONUS ==========
 function canClaimDailyBonus() {
@@ -1157,7 +1193,7 @@ function shareInviteLink() {
   if (link) {
     if (navigator.share) {
       navigator.share({
-        title: "Join my Mini App!",
+        title: "Join BitCash Crypto Faucet!",
         text: "Watch ads and earn coins! Get 100 bonus coins!",
         url: link
       }).catch((err) => {
