@@ -31,12 +31,34 @@ def check_membership(user_id):
         if data.get("ok"):
             status = data["result"].get("status")
             print(f"User {user_id} status in channel: {status}")
+            # عضو، مدیر، یا سازنده چنل
             if status in ["member", "administrator", "creator"]:
                 return True
         return False
     except Exception as e:
         print(f"Error checking membership: {e}")
         return False
+
+def get_user_from_db(user_id):
+    """گرفتن اطلاعات کاربر از دیتابیس"""
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    get_url = f"{SUPABASE_URL}/rest/v1/users?telegram_id=eq.{user_id}&select=*"
+    
+    try:
+        response = requests.get(get_url, headers=headers)
+        if response.status_code == 200:
+            users = response.json()
+            if users and len(users) > 0:
+                return users[0]
+        return None
+    except Exception as e:
+        print(f"Error getting user: {e}")
+        return None
 
 def reward_user(user_id):
     """به کاربر جایزه می‌دهد و task_join_channel رو true میکنه"""
@@ -47,40 +69,37 @@ def reward_user(user_id):
     }
     
     # اول اطلاعات کاربر رو بگیر
-    get_url = f"{SUPABASE_URL}/rest/v1/users?telegram_id=eq.{user_id}&select=*"
+    user = get_user_from_db(user_id)
+    
+    if not user:
+        print(f"User {user_id} not found in database")
+        return False
+    
+    print(f"User found: task_join_channel = {user.get('task_join_channel')}")
+    
+    # اگه قبلاً تسک رو انجام داده
+    if user.get("task_join_channel") == True:
+        print(f"User {user_id} already completed task")
+        return "already_claimed"
+    
+    # به‌روزرسانی کاربر
+    update_url = f"{SUPABASE_URL}/rest/v1/users?telegram_id=eq.{user_id}"
+    new_coins = user.get("total_coins", 0) + 20
+    
+    update_data = {
+        "task_join_channel": True,
+        "total_coins": new_coins
+    }
     
     try:
-        get_response = requests.get(get_url, headers=headers)
+        update_response = requests.patch(update_url, headers=headers, json=update_data)
         
-        if get_response.status_code == 200:
-            users = get_response.json()
-            if users and len(users) > 0:
-                user = users[0]
-                
-                # اگه قبلاً تسک رو انجام نداده
-                if not user.get("task_join_channel", False):
-                    # به‌روزرسانی کاربر
-                    update_url = f"{SUPABASE_URL}/rest/v1/users?telegram_id=eq.{user_id}"
-                    new_coins = user.get("total_coins", 0) + 20
-                    
-                    update_data = {
-                        "task_join_channel": True,
-                        "total_coins": new_coins
-                    }
-                    
-                    update_response = requests.patch(update_url, headers=headers, json=update_data)
-                    
-                    if update_response.status_code == 200:
-                        print(f"User {user_id} rewarded successfully! New coins: {new_coins}")
-                        return True
-                    else:
-                        print(f"Failed to update user: {update_response.text}")
-                else:
-                    print(f"User {user_id} already completed task")
-                    return False
+        if update_response.status_code == 200:
+            print(f"User {user_id} rewarded successfully! New coins: {new_coins}")
+            return True
         else:
-            print(f"Failed to get user: {get_response.text}")
-        return False
+            print(f"Failed to update user: {update_response.text}")
+            return False
     except Exception as e:
         print(f"Error rewarding user: {e}")
         return False
@@ -113,13 +132,22 @@ def handle_message(message):
     elif text == "/verify":
         send_message(chat_id, "🔍 Checking your channel membership... Please wait.")
         
-        if check_membership(user_id):
-            if reward_user(user_id):
-                send_message(chat_id, "✅ Congratulations! You have been verified and received 20 bonus coins!")
-            else:
-                send_message(chat_id, "❌ You have already claimed your bonus or there was an error. Please contact support.")
-        else:
+        # بررسی عضویت در چنل
+        is_member = check_membership(user_id)
+        
+        if not is_member:
             send_message(chat_id, f"❌ You are not a member of {CHANNEL_USERNAME} yet.\n\nPlease join the channel first, then send /verify again.")
+            return
+        
+        # اعطای جایزه
+        result = reward_user(user_id)
+        
+        if result == True:
+            send_message(chat_id, "✅ Congratulations! You have been verified and received 20 bonus coins!")
+        elif result == "already_claimed":
+            send_message(chat_id, "❌ You have already claimed your bonus before!")
+        else:
+            send_message(chat_id, "❌ There was an error processing your request. Please contact support.")
     
     else:
         send_message(chat_id, "Unknown command. Please use /start or /verify")
@@ -167,6 +195,18 @@ def webhook():
     except Exception as e:
         print(f"Webhook error: {e}")
         return "error", 500
+
+@app.route("/check_user/<int:user_id>")
+def check_user(user_id):
+    """Endpoint برای بررسی اطلاعات کاربر در دیتابیس"""
+    user = get_user_from_db(user_id)
+    if user:
+        return {
+            "telegram_id": user.get("telegram_id"),
+            "task_join_channel": user.get("task_join_channel"),
+            "total_coins": user.get("total_coins")
+        }
+    return {"error": "User not found"}
 
 if __name__ == "__main__":
     # راه‌اندازی حلقه Polling در یک ترد جداگانه
