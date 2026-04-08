@@ -394,7 +394,6 @@ hr {
   margin-bottom: 10px;
 }
 
-/* Tasks Section Styles */
 .tasks-section {
   margin-top: 20px;
 }
@@ -599,7 +598,7 @@ const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
 
 // ========== BOT CONFIGURATION ==========
 const BOT_USERNAME = "Bitcashcryptofaucet_bot";
-const CHANNEL_USERNAME = "bitcashcryptofaucet"; // Channel without @
+const CHANNEL_USERNAME = "bitcashcryptofaucet";
 const CHANNEL_LINK = "https://t.me/bitcashcryptofaucet";
 const TASK_JOIN_CHANNEL_REWARD = 20;
 
@@ -620,9 +619,7 @@ let userData = {
   referral_coins: 0,
   referrals: [],
   last_daily_bonus: null,
-  tasks_completed: {
-    join_channel: false
-  }
+  task_join_channel: false
 };
 
 // ========== SUPABASE FUNCTIONS ==========
@@ -649,9 +646,7 @@ async function loadUserFromDB(telegramId) {
         referral_coins: users[0].referral_coins || 0,
         referrals: [],
         last_daily_bonus: users[0].last_daily_bonus || null,
-        tasks_completed: {
-          join_channel: users[0].task_join_channel || false
-        }
+        task_join_channel: users[0].task_join_channel || false
       };
       console.log("User loaded! Total coins:", userData.total_coins);
     } else {
@@ -718,14 +713,15 @@ async function updateUserInDB() {
         watched_count: userData.watched_count,
         referral_coins: userData.referral_coins,
         last_daily_bonus: userData.last_daily_bonus,
-        task_join_channel: userData.tasks_completed.join_channel
+        task_join_channel: userData.task_join_channel
       })
     });
     
     if (response.ok) {
       console.log("✅ Saved successfully to DB!");
     } else {
-      console.error("❌ Save failed:", await response.text());
+      const errorText = await response.text();
+      console.error("❌ Save failed:", errorText);
     }
   } catch (error) {
     console.error("Error updating user:", error);
@@ -809,10 +805,11 @@ function updateTaskUI() {
   const joinBtn = document.getElementById("joinChannelBtn");
   const taskCard = document.getElementById("taskJoinChannel");
   
-  if (userData.tasks_completed.join_channel) {
+  if (userData.task_join_channel) {
     joinBtn.textContent = "✅ Completed";
     joinBtn.classList.add("completed");
     joinBtn.disabled = true;
+    joinBtn.onclick = null;
     taskCard.style.opacity = "0.7";
   } else {
     joinBtn.textContent = "Join & Claim";
@@ -823,87 +820,68 @@ function updateTaskUI() {
 }
 
 async function checkChannelMembershipAndReward() {
-  if (userData.tasks_completed.join_channel) {
+  if (userData.task_join_channel) {
     showMessage("✅ You already completed this task!");
     return;
   }
   
-  showMessage("🔍 Checking channel membership...");
-  
-  try {
-    // Method 1: Try to check via Telegram WebApp
-    if (window.Telegram && Telegram.WebApp) {
-      // Open channel in Telegram
-      Telegram.WebApp.openTelegramLink(CHANNEL_LINK);
-      
-      // Store that user opened the channel
-      sessionStorage.setItem('channel_opened', 'true');
-      
-      showMessage("📢 Please join the channel, then click 'Verify'");
-      
-      // Change button to verify mode
-      const joinBtn = document.getElementById("joinChannelBtn");
-      joinBtn.textContent = "✅ Verify Membership";
-      joinBtn.onclick = () => verifyChannelMembership();
-      
-      // Set timeout to reset button after 30 seconds
-      setTimeout(() => {
-        if (!userData.tasks_completed.join_channel) {
-          joinBtn.textContent = "Join & Claim";
-          joinBtn.onclick = () => checkChannelMembershipAndReward();
-        }
-      }, 30000);
-    }
-  } catch (error) {
-    console.error("Error checking channel membership:", error);
-    showMessage("❌ Unable to verify. Please join the channel manually and try again.");
+  // Open the channel in Telegram
+  if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.openTelegramLink(CHANNEL_LINK);
+    showMessage("📢 Please join the channel, then click 'Verify' again!");
+    
+    // Change button to verify mode
+    const joinBtn = document.getElementById("joinChannelBtn");
+    joinBtn.textContent = "✅ Verify Membership";
+    joinBtn.onclick = () => verifyChannelMembership();
+    
+    // Store in session that channel was opened
+    sessionStorage.setItem('channel_opened_' + userData.telegram_id, 'true');
+  } else {
+    window.open(CHANNEL_LINK, '_blank');
+    showMessage("📢 Please join the channel, then click 'Verify'!");
+    
+    const joinBtn = document.getElementById("joinChannelBtn");
+    joinBtn.textContent = "✅ Verify Membership";
+    joinBtn.onclick = () => verifyChannelMembership();
   }
 }
 
 async function verifyChannelMembership() {
+  if (userData.task_join_channel) {
+    showMessage("✅ Task already completed!");
+    updateTaskUI();
+    return;
+  }
+  
   showMessage("🔍 Verifying channel membership...");
   
-  try {
-    // For now, we'll use a manual verification approach
-    // The user needs to join the channel first, then click verify
+  // Since direct API check requires bot to be admin,
+  // we use a simple verification that requires user confirmation
+  const confirmed = confirm(
+    "📢 Have you joined @bitcashcryptofaucet channel?\n\n" +
+    "✅ Click OK after you have joined to claim 20 coins bonus!\n\n" +
+    "⚠️ Make sure you are a member of the channel before verifying."
+  );
+  
+  if (confirmed) {
+    // Mark task as completed
+    userData.task_join_channel = true;
+    userData.total_coins += TASK_JOIN_CHANNEL_REWARD;
     
-    // In a production environment, you would call a backend API here
-    // that checks the user's membership via bot API
+    await updateUserInDB();
+    updateUI();
+    updateTaskUI();
     
-    // Since direct API check requires bot to be admin in channel,
-    // we'll implement a manual verification with a simple challenge
+    showMessage(`🎉 Congratulations! +${TASK_JOIN_CHANNEL_REWARD} coins added for joining channel!`);
+  } else {
+    showMessage("❌ Please join the channel first, then click verify again.");
     
+    // Reset button
     const joinBtn = document.getElementById("joinChannelBtn");
-    
-    // Ask user to confirm they have joined
-    const confirmed = confirm("Have you joined @bitcashcryptofaucet channel?\n\nClick OK after you have joined to claim 20 coins bonus!");
-    
-    if (confirmed) {
-      // Reward the user
-      userData.tasks_completed.join_channel = true;
-      userData.total_coins += TASK_JOIN_CHANNEL_REWARD;
-      await updateUserInDB();
-      updateUI();
-      updateTaskUI();
-      showMessage(`🎉 Congratulations! +${TASK_JOIN_CHANNEL_REWARD} coins added for joining channel!`);
-    } else {
-      showMessage("❌ Please join the channel first, then click verify again.");
-    }
-  } catch (error) {
-    console.error("Error verifying membership:", error);
-    showMessage("❌ Verification failed. Please make sure you joined the channel.");
+    joinBtn.textContent = "Join & Claim";
+    joinBtn.onclick = () => checkChannelMembershipAndReward();
   }
-}
-
-// Alternative: Using Bot API (requires backend)
-// To use this method, you need to:
-// 1. Add your bot as admin to the channel
-// 2. Create a simple backend endpoint that calls:
-//    `https://api.telegram.org/bot<BOT_TOKEN>/getChatMember?chat_id=@bitcashcryptofaucet&user_id=<USER_ID>`
-async function verifyChannelMembershipViaBot() {
-  // This requires a backend server
-  // You can create a simple Cloudflare Worker or Supabase Edge Function
-  showMessage("ℹ️ Verification system is ready. Please join the channel and click verify.");
 }
 
 // ========== DAILY BONUS ==========
@@ -1187,7 +1165,6 @@ function shareInviteLink() {
         copyInviteLink();
       });
     } else {
-      // Fallback for browsers without share API
       copyInviteLink();
     }
   }
@@ -1383,7 +1360,6 @@ async function init() {
   document.getElementById("faucetpayOption").onclick = () => showFaucetPayModal();
   document.getElementById("directOption").onclick = () => showDirectWalletModal();
   
-  // Task button
   document.getElementById("joinChannelBtn").onclick = () => checkChannelMembershipAndReward();
   
   setInterval(() => updateDailyBonusUI(), 60000);
