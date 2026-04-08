@@ -227,6 +227,7 @@ const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
 const DOGE_RATE = 0.0001;
 const WITHDRAW_HISTORY_DAYS = 3;
+const TAB_TIMEOUT = 30000; // 30 seconds timeout
 
 // ========== USER DATA ==========
 let userData = {
@@ -242,12 +243,6 @@ let userData = {
 };
 
 let adsgramController = null;
-
-// ========== ADSTERRA HELPERS ==========
-function openAdsterraSmartlinks() {
-    window.open(ADSTERRA_SMARTLINK_1, '_blank');
-    window.open(ADSTERRA_SMARTLINK_2, '_blank');
-}
 
 // ========== ADSGRAM SETUP ==========
 function initAdsgram() {
@@ -275,60 +270,120 @@ function showAdsgramAd(onSuccess, onError) {
     });
 }
 
-// ========== CORE AD FLOW ==========
-function runAdFlow(onComplete) {
+// ========== SEQUENTIAL AD FUNCTIONS ==========
+function openSmartlinkAndWait(url, onComplete, stepName) {
+    const newTab = window.open(url, '_blank');
+    
+    if (!newTab) {
+        console.log("Popup blocked, continuing...");
+        if (onComplete) onComplete();
+        return;
+    }
+    
+    showMessage(`📢 ${stepName} - Please check the offer, then close the tab to continue...`);
+    
+    let tabClosed = false;
+    let timeoutOccurred = false;
+    
+    const checkInterval = setInterval(() => {
+        if (newTab.closed) {
+            if (!tabClosed) {
+                tabClosed = true;
+                clearInterval(checkInterval);
+                showMessage(`✅ Tab closed! Continuing to next step...`);
+                if (onComplete) onComplete();
+            }
+        }
+    }, 1000);
+    
+    setTimeout(() => {
+        if (!tabClosed && !timeoutOccurred) {
+            timeoutOccurred = true;
+            clearInterval(checkInterval);
+            console.log(`Timeout (${TAB_TIMEOUT/1000}s) waiting for tab close, continuing...`);
+            showMessage(`⏰ Timeout! Continuing to next step...`);
+            if (onComplete) onComplete();
+        }
+    }, TAB_TIMEOUT);
+}
+
+function showSequentialAds(onComplete) {
+    showMessage("🎬 Loading first offer...");
+    
+    setTimeout(() => {
+        openSmartlinkAndWait(ADSTERRA_SMARTLINK_1, () => {
+            openSmartlinkAndWait(ADSTERRA_SMARTLINK_2, () => {
+                showMessage("🎬 Loading video ad...");
+                showAdsgramAd(() => {
+                    if (onComplete) onComplete();
+                }, (error) => {
+                    showMessage("⚠️ " + error + " But you still get coins!");
+                    if (onComplete) onComplete();
+                });
+            }, "Offer 2 of 3");
+        }, "Offer 1 of 3");
+    }, 2000);
+}
+
+// ========== WATCH AD WITH SEQUENTIAL ADS ==========
+function watchAdWithSequentialAds() {
     showCaptcha(async (captchaSuccess) => {
         if (!captchaSuccess) {
             showMessage("❌ Verification failed. Please try again.");
             return;
         }
-        showMessage("🎬 Loading premium offers...");
-        openAdsterraSmartlinks();
-        setTimeout(() => {
-            showAdsgramAd(() => {
-                if (onComplete) onComplete();
-            }, (error) => {
-                showMessage("⚠️ " + error + " But you still get coins!");
-                if (onComplete) onComplete();
-            });
-        }, 1000);
+        
+        showSequentialAds(() => {
+            userData.total_coins += PER_AD;
+            userData.watched_count++;
+            updateUserInDB();
+            updateUI();
+            showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
+        });
     });
 }
 
-// ========== WATCH AD & DAILY BONUS ==========
-function watchAd() {
-    runAdFlow(() => {
-        userData.total_coins += PER_AD;
-        userData.watched_count++;
-        updateUserInDB();
-        updateUI();
-        showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
-    });
-}
-
-function claimDailyBonusWithAds() {
+function claimDailyBonusWithSequentialAds() {
     if (!canClaimDailyBonus()) {
         showMessage("❌ Daily bonus already claimed! Come back tomorrow.");
         return;
     }
-    runAdFlow(() => {
-        userData.total_coins += DAILY_BONUS;
-        userData.last_daily_bonus = new Date().toISOString();
-        updateUserInDB();
-        updateUI();
-        updateDailyBonusUI();
-        showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus! Total: ${userData.total_coins}`);
+    
+    showCaptcha(async (captchaSuccess) => {
+        if (!captchaSuccess) {
+            showMessage("❌ Verification failed. Please try again.");
+            return;
+        }
+        
+        showSequentialAds(() => {
+            userData.total_coins += DAILY_BONUS;
+            userData.last_daily_bonus = new Date().toISOString();
+            updateUserInDB();
+            updateUI();
+            updateDailyBonusUI();
+            showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus! Total: ${userData.total_coins}`);
+        });
     });
 }
 
-// ========== WITHDRAW WITH AD FLOW ==========
+// ========== WITHDRAW WITH SEQUENTIAL ADS ==========
 function showFaucetPayModal() {
     const minAmount = 5000;
     if (userData.total_coins < minAmount) {
         showMessage(`❌ You need at least ${minAmount} coins for FaucetPay withdrawal!`);
         return;
     }
-    runAdFlow(() => showFaucetPayModalForm());
+    
+    showCaptcha(async (captchaSuccess) => {
+        if (!captchaSuccess) {
+            showMessage("❌ Verification failed. Please try again.");
+            return;
+        }
+        
+        showSequentialAds(() => {
+            showFaucetPayModalForm();
+        });
+    });
 }
 
 function showDirectWalletModal() {
@@ -337,7 +392,17 @@ function showDirectWalletModal() {
         showMessage(`❌ You need at least ${minAmount} coins for Direct Wallet withdrawal!`);
         return;
     }
-    runAdFlow(() => showDirectWalletModalForm());
+    
+    showCaptcha(async (captchaSuccess) => {
+        if (!captchaSuccess) {
+            showMessage("❌ Verification failed. Please try again.");
+            return;
+        }
+        
+        showSequentialAds(() => {
+            showDirectWalletModalForm();
+        });
+    });
 }
 
 // ========== SUPABASE FUNCTIONS ==========
@@ -811,10 +876,10 @@ async function init() {
     }
     await loadUserFromDB(userData.telegram_id);
     checkReferral();
-    document.getElementById("mainWatchBtn").onclick = () => watchAd();
+    document.getElementById("mainWatchBtn").onclick = () => watchAdWithSequentialAds();
     document.getElementById("copyInviteBtn").onclick = () => copyInviteLink();
     document.getElementById("shareInviteBtn").onclick = () => shareInviteLink();
-    document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithAds();
+    document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithSequentialAds();
     document.getElementById("faucetpayOption").onclick = () => showFaucetPayModal();
     document.getElementById("directOption").onclick = () => showDirectWalletModal();
     document.getElementById("joinChannelBtn").onclick = () => checkChannelMembershipAndReward();
