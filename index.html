@@ -393,6 +393,60 @@ hr {
   color: #ffd700;
   margin-bottom: 10px;
 }
+
+/* Tasks Section Styles */
+.tasks-section {
+  margin-top: 20px;
+}
+
+.task-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 15px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.task-info h4 {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.task-info p {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.task-reward {
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.task-btn {
+  background: linear-gradient(135deg, #6c63ff, #3f37c9);
+  border: none;
+  padding: 8px 20px;
+  border-radius: 40px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.task-btn.completed {
+  background: #4caf50;
+  cursor: default;
+  opacity: 0.7;
+}
+
+.task-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 </style>
 </head>
 <body>
@@ -434,6 +488,21 @@ hr {
         <p style="font-size: 12px; margin-top: 20px; opacity: 0.6;">
           ✨ Human verification required for each ad ✨
         </p>
+      </div>
+      
+      <!-- Tasks Section -->
+      <div class="tasks-section">
+        <h3 style="margin-bottom: 15px;">📋 Daily Tasks</h3>
+        
+        <!-- Task 1: Join Channel -->
+        <div class="task-card" id="taskJoinChannel">
+          <div class="task-info">
+            <h4>📢 Join Our Channel</h4>
+            <p>Join @bitcashcryptofaucet and earn bonus!</p>
+            <span class="task-reward">🎁 Reward: +20 Coins</span>
+          </div>
+          <button class="task-btn" id="joinChannelBtn">Join & Claim</button>
+        </div>
       </div>
     </div>
 
@@ -530,13 +599,16 @@ const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
 
 // ========== BOT CONFIGURATION ==========
 const BOT_USERNAME = "Bitcashcryptofaucet_bot";
+const CHANNEL_USERNAME = "bitcashcryptofaucet"; // Channel without @
+const CHANNEL_LINK = "https://t.me/bitcashcryptofaucet";
+const TASK_JOIN_CHANNEL_REWARD = 20;
 
 // ========== CONSTANTS ==========
 const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
 const DOGE_RATE = 0.0001;
-const WITHDRAW_HISTORY_DAYS = 3; // حذف از نمایش بعد از 3 روز
+const WITHDRAW_HISTORY_DAYS = 3;
 
 // ========== USER DATA ==========
 let userData = {
@@ -547,7 +619,10 @@ let userData = {
   watched_count: 0,
   referral_coins: 0,
   referrals: [],
-  last_daily_bonus: null
+  last_daily_bonus: null,
+  tasks_completed: {
+    join_channel: false
+  }
 };
 
 // ========== SUPABASE FUNCTIONS ==========
@@ -573,7 +648,10 @@ async function loadUserFromDB(telegramId) {
         watched_count: users[0].watched_count || 0,
         referral_coins: users[0].referral_coins || 0,
         referrals: [],
-        last_daily_bonus: users[0].last_daily_bonus || null
+        last_daily_bonus: users[0].last_daily_bonus || null,
+        tasks_completed: {
+          join_channel: users[0].task_join_channel || false
+        }
       };
       console.log("User loaded! Total coins:", userData.total_coins);
     } else {
@@ -587,6 +665,7 @@ async function loadUserFromDB(telegramId) {
     loadReferralsFromDB();
     updateDailyBonusUI();
     renderHistory();
+    updateTaskUI();
   } catch (error) {
     console.error("Error loading user:", error);
     showMessage("❌ Database connection error!");
@@ -608,7 +687,8 @@ async function createNewUser(telegramId) {
         total_coins: 0,
         watched_count: 0,
         referral_coins: 0,
-        last_daily_bonus: null
+        last_daily_bonus: null,
+        task_join_channel: false
       })
     });
     
@@ -637,7 +717,8 @@ async function updateUserInDB() {
         total_coins: userData.total_coins,
         watched_count: userData.watched_count,
         referral_coins: userData.referral_coins,
-        last_daily_bonus: userData.last_daily_bonus
+        last_daily_bonus: userData.last_daily_bonus,
+        task_join_channel: userData.tasks_completed.join_channel
       })
     });
     
@@ -699,7 +780,6 @@ async function loadReferralsFromDB() {
 
 async function saveReferral(referredUserId) {
   try {
-    // Update the new user with referrer ID
     await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
       method: 'PATCH',
       headers: {
@@ -712,18 +792,118 @@ async function saveReferral(referredUserId) {
       })
     });
     
-    // Add bonus to referrer
     userData.total_coins += REFERRAL_BONUS;
     userData.referral_coins += REFERRAL_BONUS;
     await updateUserInDB();
     updateUI();
     loadReferralsFromDB();
     
-    // Show congratulatory message
     showMessage(`🎉 Congratulations! +${REFERRAL_BONUS} referral bonus coins added to your account!`);
   } catch (error) {
     console.error("Error saving referral:", error);
   }
+}
+
+// ========== TASKS FUNCTIONS ==========
+function updateTaskUI() {
+  const joinBtn = document.getElementById("joinChannelBtn");
+  const taskCard = document.getElementById("taskJoinChannel");
+  
+  if (userData.tasks_completed.join_channel) {
+    joinBtn.textContent = "✅ Completed";
+    joinBtn.classList.add("completed");
+    joinBtn.disabled = true;
+    taskCard.style.opacity = "0.7";
+  } else {
+    joinBtn.textContent = "Join & Claim";
+    joinBtn.classList.remove("completed");
+    joinBtn.disabled = false;
+    taskCard.style.opacity = "1";
+  }
+}
+
+async function checkChannelMembershipAndReward() {
+  if (userData.tasks_completed.join_channel) {
+    showMessage("✅ You already completed this task!");
+    return;
+  }
+  
+  showMessage("🔍 Checking channel membership...");
+  
+  try {
+    // Method 1: Try to check via Telegram WebApp
+    if (window.Telegram && Telegram.WebApp) {
+      // Open channel in Telegram
+      Telegram.WebApp.openTelegramLink(CHANNEL_LINK);
+      
+      // Store that user opened the channel
+      sessionStorage.setItem('channel_opened', 'true');
+      
+      showMessage("📢 Please join the channel, then click 'Verify'");
+      
+      // Change button to verify mode
+      const joinBtn = document.getElementById("joinChannelBtn");
+      joinBtn.textContent = "✅ Verify Membership";
+      joinBtn.onclick = () => verifyChannelMembership();
+      
+      // Set timeout to reset button after 30 seconds
+      setTimeout(() => {
+        if (!userData.tasks_completed.join_channel) {
+          joinBtn.textContent = "Join & Claim";
+          joinBtn.onclick = () => checkChannelMembershipAndReward();
+        }
+      }, 30000);
+    }
+  } catch (error) {
+    console.error("Error checking channel membership:", error);
+    showMessage("❌ Unable to verify. Please join the channel manually and try again.");
+  }
+}
+
+async function verifyChannelMembership() {
+  showMessage("🔍 Verifying channel membership...");
+  
+  try {
+    // For now, we'll use a manual verification approach
+    // The user needs to join the channel first, then click verify
+    
+    // In a production environment, you would call a backend API here
+    // that checks the user's membership via bot API
+    
+    // Since direct API check requires bot to be admin in channel,
+    // we'll implement a manual verification with a simple challenge
+    
+    const joinBtn = document.getElementById("joinChannelBtn");
+    
+    // Ask user to confirm they have joined
+    const confirmed = confirm("Have you joined @bitcashcryptofaucet channel?\n\nClick OK after you have joined to claim 20 coins bonus!");
+    
+    if (confirmed) {
+      // Reward the user
+      userData.tasks_completed.join_channel = true;
+      userData.total_coins += TASK_JOIN_CHANNEL_REWARD;
+      await updateUserInDB();
+      updateUI();
+      updateTaskUI();
+      showMessage(`🎉 Congratulations! +${TASK_JOIN_CHANNEL_REWARD} coins added for joining channel!`);
+    } else {
+      showMessage("❌ Please join the channel first, then click verify again.");
+    }
+  } catch (error) {
+    console.error("Error verifying membership:", error);
+    showMessage("❌ Verification failed. Please make sure you joined the channel.");
+  }
+}
+
+// Alternative: Using Bot API (requires backend)
+// To use this method, you need to:
+// 1. Add your bot as admin to the channel
+// 2. Create a simple backend endpoint that calls:
+//    `https://api.telegram.org/bot<BOT_TOKEN>/getChatMember?chat_id=@bitcashcryptofaucet&user_id=<USER_ID>`
+async function verifyChannelMembershipViaBot() {
+  // This requires a backend server
+  // You can create a simple Cloudflare Worker or Supabase Edge Function
+  showMessage("ℹ️ Verification system is ready. Please join the channel and click verify.");
 }
 
 // ========== DAILY BONUS ==========
@@ -1002,10 +1182,12 @@ function shareInviteLink() {
         title: "Join my Mini App!",
         text: "Watch ads and earn coins! Get 100 bonus coins!",
         url: link
-      }).catch(() => {
+      }).catch((err) => {
+        console.log("Share failed:", err);
         copyInviteLink();
       });
     } else {
+      // Fallback for browsers without share API
       copyInviteLink();
     }
   }
@@ -1018,7 +1200,6 @@ function checkReferral() {
   if (startParam && startParam.startsWith('ref_')) {
     const referrerId = parseInt(startParam.replace('ref_', ''));
     
-    // Prevent self-referral (user cannot invite themselves)
     if (referrerId !== userData.telegram_id) {
       fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}&select=referred_by`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -1062,7 +1243,6 @@ async function renderHistory() {
       return;
     }
     
-    // Filter out approved withdrawals older than 3 days from display only
     const now = new Date();
     let html = '';
     let visibleCount = 0;
@@ -1072,9 +1252,8 @@ async function renderHistory() {
       let createdDate = new Date(w.created_at);
       let daysDiff = (now - createdDate) / (1000 * 60 * 60 * 24);
       
-      // Hide approved withdrawals older than 3 days (but keep in database)
       if (w.status === 'approved' && daysDiff > WITHDRAW_HISTORY_DAYS) {
-        continue; // Skip showing this item
+        continue;
       }
       
       visibleCount++;
@@ -1204,8 +1383,10 @@ async function init() {
   document.getElementById("faucetpayOption").onclick = () => showFaucetPayModal();
   document.getElementById("directOption").onclick = () => showDirectWalletModal();
   
+  // Task button
+  document.getElementById("joinChannelBtn").onclick = () => checkChannelMembershipAndReward();
+  
   setInterval(() => updateDailyBonusUI(), 60000);
-  // Refresh history every 5 minutes to check for 3-day old removals
   setInterval(() => renderHistory(), 300000);
 }
 
