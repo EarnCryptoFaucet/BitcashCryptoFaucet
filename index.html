@@ -593,6 +593,7 @@ hr {
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script>
 // ============================================
 // SUPABASE CONFIGURATION
@@ -600,6 +601,10 @@ hr {
 const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
 // ============================================
+
+// ========== ADSGRAM CONFIGURATION ==========
+const ADSGRAM_BLOCK_ID = "27187";
+let adsgramController = null;
 
 // ========== BOT CONFIGURATION ==========
 const BOT_USERNAME = "Bitcashcryptofaucet_bot";
@@ -627,6 +632,48 @@ let userData = {
   last_daily_bonus: null,
   task_join_channel: false
 };
+
+// ========== ADSGRAM FUNCTIONS ==========
+function initAdsgram() {
+  if (adsgramController === null && typeof window.Adsgram !== "undefined") {
+    adsgramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+  }
+  return adsgramController;
+}
+
+function showAdsgramAd(onSuccess, onError) {
+  const controller = initAdsgram();
+  if (!controller) {
+    console.error("Adsgram not initialized");
+    if (onError) onError("Ad service not available");
+    return;
+  }
+  
+  controller.show().then(function(result) {
+    if (result && result.done) {
+      if (onSuccess) onSuccess();
+    } else {
+      if (onError) onError("Ad wasn't fully watched");
+    }
+  }).catch(function(error) {
+    console.error("Ad error:", error);
+    if (onError) onError("Ad failed to load");
+  });
+}
+
+// ========== AD WATCHING WITH CAPTCHA ==========
+function watchAdWithCaptcha(onComplete) {
+  showCaptcha((success) => {
+    if (success) {
+      showMessage("🎬 Loading advertisement...");
+      showAdsgramAd(() => {
+        if (onComplete) onComplete();
+      }, (error) => {
+        showMessage("❌ " + error);
+      });
+    }
+  });
+}
 
 // ========== SUPABASE FUNCTIONS ==========
 async function loadUserFromDB(telegramId) {
@@ -907,7 +954,7 @@ async function verifyChannelMembership() {
   }
 }
 
-// ========== DAILY BONUS ==========
+// ========== DAILY BONUS WITH ADS ==========
 function canClaimDailyBonus() {
   if (!userData.last_daily_bonus) return true;
   const lastClaim = new Date(userData.last_daily_bonus);
@@ -943,33 +990,38 @@ function updateDailyBonusUI() {
   }
 }
 
-function claimDailyBonusWithCaptcha() {
+function claimDailyBonusWithAds() {
   if (!canClaimDailyBonus()) {
     showMessage("❌ Daily bonus already claimed! Come back tomorrow.");
     return;
   }
   
-  showCaptcha((success) => {
-    if (success) {
-      claimDailyBonusReward();
-    }
+  watchAdWithCaptcha(() => {
+    claimDailyBonusReward();
   });
 }
 
 function claimDailyBonusReward() {
-  showMessage("🎁 Claiming daily bonus...");
-  
-  setTimeout(() => {
-    userData.total_coins += DAILY_BONUS;
-    userData.last_daily_bonus = new Date().toISOString();
-    updateUserInDB();
-    updateUI();
-    updateDailyBonusUI();
-    showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus! Total: ${userData.total_coins}`);
-  }, 500);
+  userData.total_coins += DAILY_BONUS;
+  userData.last_daily_bonus = new Date().toISOString();
+  updateUserInDB();
+  updateUI();
+  updateDailyBonusUI();
+  showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus! Total: ${userData.total_coins}`);
 }
 
-// ========== WITHDRAW MODALS ==========
+// ========== WATCH AD ==========
+function watchAd() {
+  watchAdWithCaptcha(() => {
+    userData.total_coins += PER_AD;
+    userData.watched_count++;
+    updateUserInDB();
+    updateUI();
+    showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
+  });
+}
+
+// ========== WITHDRAW WITH ADS ==========
 function showFaucetPayModal() {
   const minAmount = 5000;
   
@@ -977,6 +1029,14 @@ function showFaucetPayModal() {
     showMessage(`❌ You need at least ${minAmount} coins for FaucetPay withdrawal!`);
     return;
   }
+  
+  watchAdWithCaptcha(() => {
+    showFaucetPayModalForm();
+  });
+}
+
+function showFaucetPayModalForm() {
+  const minAmount = 5000;
   
   let modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -1039,6 +1099,14 @@ function showDirectWalletModal() {
     showMessage(`❌ You need at least ${minAmount} coins for Direct Wallet withdrawal!`);
     return;
   }
+  
+  watchAdWithCaptcha(() => {
+    showDirectWalletModalForm();
+  });
+}
+
+function showDirectWalletModalForm() {
+  const minAmount = 10000;
   
   let modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -1135,27 +1203,6 @@ function showCaptcha(callback) {
       document.getElementById('captchaSubmit').click();
     }
   };
-}
-
-// ========== AD WATCHING ==========
-function watchAd() {
-  showCaptcha((success) => {
-    if (success) {
-      watchAdReward();
-    }
-  });
-}
-
-function watchAdReward() {
-  showMessage("🎬 Loading advertisement...");
-  
-  setTimeout(() => {
-    userData.total_coins += PER_AD;
-    userData.watched_count++;
-    updateUserInDB();
-    updateUI();
-    showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
-  }, 1500);
 }
 
 // ========== REFERRAL ==========
@@ -1350,6 +1397,9 @@ function initTabs() {
 async function init() {
   initTabs();
   
+  // Initialize Adsgram
+  initAdsgram();
+  
   if (window.Telegram && Telegram.WebApp) {
     Telegram.WebApp.ready();
     Telegram.WebApp.expand();
@@ -1378,7 +1428,7 @@ async function init() {
   document.getElementById("mainWatchBtn").onclick = () => watchAd();
   document.getElementById("copyInviteBtn").onclick = () => copyInviteLink();
   document.getElementById("shareInviteBtn").onclick = () => shareInviteLink();
-  document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithCaptcha();
+  document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithAds();
   
   document.getElementById("faucetpayOption").onclick = () => showFaucetPayModal();
   document.getElementById("directOption").onclick = () => showDirectWalletModal();
