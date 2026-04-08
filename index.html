@@ -451,6 +451,16 @@ hr {
   background: #ff9800;
   cursor: wait;
 }
+
+.smartlink-btn {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  margin-top: 10px;
+}
+
+.smartlink-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 25px rgba(255, 152, 0, 0.3);
+}
 </style>
 </head>
 <body>
@@ -492,6 +502,14 @@ hr {
         <p style="font-size: 12px; margin-top: 20px; opacity: 0.6;">
           ✨ Human verification required for each ad ✨
         </p>
+        
+        <!-- Adsterra Smartlink Button -->
+        <a href="https://www.profitablecpmratenetwork.com/w9ymy0dej?key=3a278d8509584231a295f4e0b59d80fd" target="_blank" rel="nofollow noopener noreferrer" style="text-decoration: none;">
+          <button class="watch-btn smartlink-btn" style="margin-top: 15px;">
+            🎁 GET BONUS OFFER! 🎁
+          </button>
+        </a>
+        <p style="font-size: 11px; opacity: 0.6; margin-top: 5px;">Click above for exclusive rewards!</p>
       </div>
       
       <!-- Tasks Section -->
@@ -592,6 +610,9 @@ hr {
   </div>
 </div>
 
+<!-- Adsterra Popunder Script -->
+<script src="https://pl29094409.profitablecpmratenetwork.com/b7/d7/5d/b7d75d7bcbcada63ee33429b665656ed.js"></script>
+
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script>
@@ -605,6 +626,9 @@ const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
 // ========== ADSGRAM CONFIGURATION ==========
 const ADSGRAM_BLOCK_ID = "27187";
 let adsgramController = null;
+
+// ========== ADSTERRA CONFIGURATION ==========
+const ADSTERRA_ZONE_ID = "29094409"; // Your Popunder Zone ID
 
 // ========== BOT CONFIGURATION ==========
 const BOT_USERNAME = "Bitcashcryptofaucet_bot";
@@ -633,6 +657,16 @@ let userData = {
   task_join_channel: false
 };
 
+// ========== ADSTERRA POPUNDER FUNCTION ==========
+function showAdsterraPopunder() {
+    try {
+        // The Adsterra script handles popunder automatically
+        console.log("Adsterra Popunder triggered");
+    } catch (error) {
+        console.log("Adsterra popunder error:", error);
+    }
+}
+
 // ========== ADSGRAM FUNCTIONS ==========
 function initAdsgram() {
   if (adsgramController === null && typeof window.Adsgram !== "undefined") {
@@ -642,6 +676,9 @@ function initAdsgram() {
 }
 
 function showAdsgramAd(onSuccess, onError) {
+  // Show Adsterra Popunder first
+  showAdsterraPopunder();
+  
   const controller = initAdsgram();
   if (!controller) {
     console.error("Adsgram not initialized");
