@@ -149,6 +149,13 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
           </div>
           <button class="task-btn" id="joinChannelBtn">Join & Claim</button>
         </div>
+        
+        <!-- AdsGram Task Ad (Reward: 20 coins) -->
+        <adsgram-task
+          data-block-id="task-27274"
+          class="task-card"
+          data-reward-amount="20"
+        ></adsgram-task>
       </div>
     </div>
 
@@ -238,7 +245,9 @@ const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
 
 // ========== ADSGRAM CONFIGURATION ==========
-const ADSGRAM_BLOCK_ID = "27187";
+const ADSGRAM_REWARD_BLOCK_ID = "27187";
+const ADSGRAM_INTERSTITIAL_BLOCK_ID = "int-27273";
+const ADSGRAM_TASK_BLOCK_ID = "task-27274";
 
 // ========== ADSTERRA CONFIGURATION ==========
 const ADSTERRA_SMARTLINK_1 = "https://www.profitablecpmratenetwork.com/w9ymy0dej?key=3a278d8509584231a295f4e0b59d80fd";
@@ -282,19 +291,38 @@ let userData = {
 };
 
 let adsgramController = null;
+let interstitialController = null;
 let hourlyTimerInterval = null;
 let dailyTimerInterval = null;
 
 // ========== ADSGRAM SETUP ==========
-function initAdsgram() {
+function initAdsgramReward() {
     if (adsgramController === null && typeof window.Adsgram !== "undefined") {
-        adsgramController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
+        adsgramController = window.Adsgram.init({ blockId: ADSGRAM_REWARD_BLOCK_ID });
     }
     return adsgramController;
 }
 
-function showAdsgramAd(onSuccess, onError) {
-    const controller = initAdsgram();
+function initInterstitialAd() {
+    if (interstitialController === null && typeof window.Adsgram !== "undefined") {
+        interstitialController = window.Adsgram.init({ blockId: ADSGRAM_INTERSTITIAL_BLOCK_ID });
+    }
+    return interstitialController;
+}
+
+function showInterstitialAd() {
+    const controller = initInterstitialAd();
+    if (!controller) {
+        console.log("Interstitial ad not ready");
+        return;
+    }
+    controller.show().catch((error) => {
+        console.log("Interstitial ad error:", error);
+    });
+}
+
+function showAdsgramRewardAd(onSuccess, onError) {
+    const controller = initAdsgramReward();
     if (!controller) {
         if (onError) onError("Ad service not available");
         return;
@@ -345,7 +373,7 @@ function showSequentialAds(onComplete) {
         openSmartlinkAndWait(ADSTERRA_SMARTLINK_1, () => {
             openSmartlinkAndWait(ADSTERRA_SMARTLINK_2, () => {
                 showMessage("🎬 Loading video ad...");
-                showAdsgramAd(() => {
+                showAdsgramRewardAd(() => {
                     if (onComplete) onComplete();
                 }, (error) => {
                     showMessage("⚠️ " + error + " But you still get coins!");
@@ -1102,16 +1130,25 @@ function showMessage(msg) {
     setTimeout(() => toast.remove(), 3000);
 }
 
+// ========== TAB NAVIGATION WITH INTERSTITIAL ADS ==========
 function initTabs() {
     let btns = document.querySelectorAll(".tab-btn");
     let panes = document.querySelectorAll(".tab-pane");
+    
     btns.forEach(btn => {
         btn.onclick = () => {
             let id = btn.getAttribute("data-tab");
+            
+            // Show interstitial ad when switching tabs (except first load)
+            if (document.querySelector(".tab-pane.active") && id !== "home") {
+                showInterstitialAd();
+            }
+            
             btns.forEach(b => b.classList.remove("active"));
             panes.forEach(p => p.classList.remove("active"));
             btn.classList.add("active");
             document.getElementById(id + "-tab").classList.add("active");
+            
             if (id === "profile") renderHistory();
             if (id === "referral") loadReferralsFromDB();
         };
@@ -1127,11 +1164,29 @@ function startTimers() {
     dailyTimerInterval = setInterval(() => updateDailyChallengeUI(), 1000);
 }
 
+// ========== ADSGRAM TASK AD EVENT HANDLER ==========
+function setupTaskAdHandler() {
+    const taskAd = document.querySelector('adsgram-task');
+    if (taskAd) {
+        taskAd.addEventListener('taskCompleted', async (event) => {
+            console.log('Task completed:', event.detail);
+            // Add 20 coins reward for task completion
+            userData.total_coins += 20;
+            userData.watched_count++;
+            await updateUserInDB();
+            updateUI();
+            showMessage("🎉 +20 Coins from task! Total: " + userData.total_coins);
+        });
+    }
+}
+
 // ========== INITIALIZATION ==========
 async function init() {
     initTabs();
-    initAdsgram();
+    initAdsgramReward();
+    initInterstitialAd();
     startTimers();
+    setupTaskAdHandler();
     
     if (window.Telegram && Telegram.WebApp) {
         Telegram.WebApp.ready();
