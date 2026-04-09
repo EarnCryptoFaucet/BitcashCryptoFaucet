@@ -150,7 +150,6 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
           <button class="task-btn" id="joinChannelBtn">Join & Claim</button>
         </div>
         
-        <!-- AdsGram Task Ad (Reward: 20 coins) -->
         <adsgram-task
           data-block-id="task-27274"
           class="task-card"
@@ -294,6 +293,7 @@ let adsgramController = null;
 let interstitialController = null;
 let hourlyTimerInterval = null;
 let dailyTimerInterval = null;
+let isFirstLoad = true;
 
 // ========== ADSGRAM SETUP ==========
 function initAdsgramReward() {
@@ -382,6 +382,12 @@ function showSequentialAds(onComplete) {
             }, "Offer 2 of 3");
         }, "Offer 1 of 3");
     }, 2000);
+}
+
+// ========== REWARD AD WRAPPER WITH INTERSTITIAL ==========
+function showRewardAdWithInterstitial(onComplete) {
+    showInterstitialAd();
+    showSequentialAds(onComplete);
 }
 
 // ========== BONUS TRACKING FUNCTIONS ==========
@@ -475,7 +481,6 @@ function incrementAdCounters() {
     const nowISO = new Date().toISOString();
     const nowTimestamp = Date.now();
     
-    // Hourly counter
     let lastHourlyReset = userData.hourly_bonus_claim_time;
     if (lastHourlyReset) {
         const lastHourlyTime = new Date(lastHourlyReset).getTime();
@@ -490,7 +495,6 @@ function incrementAdCounters() {
         userData.hourly_bonus_claim_time = nowISO;
     }
     
-    // Daily counter
     let lastDailyReset = userData.daily_challenge_claim_time;
     if (lastDailyReset) {
         const lastDailyTime = new Date(lastDailyReset).getTime();
@@ -519,7 +523,7 @@ function claimHourlyBonusWithCaptcha() {
     
     showCaptcha((success) => {
         if (success) {
-            showSequentialAds(() => {
+            showRewardAdWithInterstitial(() => {
                 userData.total_coins += HOURLY_BONUS_REWARD;
                 userData.hourly_bonus_ads = 0;
                 userData.hourly_bonus_claim_time = new Date().toISOString();
@@ -540,7 +544,7 @@ function claimDailyChallengeWithCaptcha() {
     
     showCaptcha((success) => {
         if (success) {
-            showSequentialAds(() => {
+            showRewardAdWithInterstitial(() => {
                 userData.total_coins += DAILY_CHALLENGE_REWARD;
                 userData.daily_challenge_ads = 0;
                 userData.daily_challenge_claim_time = new Date().toISOString();
@@ -561,7 +565,7 @@ function watchAdWithSequentialAds() {
             return;
         }
         
-        showSequentialAds(() => {
+        showRewardAdWithInterstitial(() => {
             userData.total_coins += PER_AD;
             userData.watched_count++;
             incrementAdCounters();
@@ -586,7 +590,7 @@ function claimDailyBonusWithAds() {
             return;
         }
         
-        showSequentialAds(() => {
+        showRewardAdWithInterstitial(() => {
             userData.total_coins += DAILY_BONUS;
             userData.last_daily_bonus = new Date().toISOString();
             updateUserInDB();
@@ -611,7 +615,7 @@ function showFaucetPayModal() {
             return;
         }
         
-        showSequentialAds(() => {
+        showRewardAdWithInterstitial(() => {
             showFaucetPayModalForm();
         });
     });
@@ -632,7 +636,7 @@ function showDirectWalletModal() {
             return;
         }
         
-        showSequentialAds(() => {
+        showRewardAdWithInterstitial(() => {
             showDirectWalletModalForm();
         });
     });
@@ -1139,10 +1143,8 @@ function initTabs() {
         btn.onclick = () => {
             let id = btn.getAttribute("data-tab");
             
-            // Show interstitial ad when switching tabs (except first load)
-            if (document.querySelector(".tab-pane.active") && id !== "home") {
-                showInterstitialAd();
-            }
+            // Show interstitial ad when clicking on ANY tab (including Home)
+            showInterstitialAd();
             
             btns.forEach(b => b.classList.remove("active"));
             panes.forEach(p => p.classList.remove("active"));
@@ -1170,7 +1172,6 @@ function setupTaskAdHandler() {
     if (taskAd) {
         taskAd.addEventListener('taskCompleted', async (event) => {
             console.log('Task completed:', event.detail);
-            // Add 20 coins reward for task completion
             userData.total_coins += 20;
             userData.watched_count++;
             await updateUserInDB();
@@ -1209,6 +1210,11 @@ async function init() {
     }
     await loadUserFromDB(userData.telegram_id);
     checkReferral();
+    
+    // Show interstitial ad on first load
+    setTimeout(() => {
+        showInterstitialAd();
+    }, 1000);
     
     document.getElementById("mainWatchBtn").onclick = () => watchAdWithSequentialAds();
     document.getElementById("copyInviteBtn").onclick = () => copyInviteLink();
