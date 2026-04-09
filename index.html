@@ -19,6 +19,7 @@ body{font-family:system-ui;background:linear-gradient(145deg,#1a1e2b,#0f121c);co
 .watch-btn{background:linear-gradient(135deg,#6c63ff,#3f37c9);border:none;padding:18px;width:100%;border-radius:60px;font-size:20px;font-weight:bold;color:white;cursor:pointer;transition:transform 0.2s ease,box-shadow 0.2s ease}
 .watch-btn:hover{transform:scale(1.02);box-shadow:0 10px 25px rgba(108,99,255,0.3)}
 .watch-btn:active{transform:scale(0.98)}
+.watch-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 .coin-badge{background:linear-gradient(135deg,#ffd700,#ffb347);color:#1a1e2b;padding:8px 18px;border-radius:50px;display:inline-flex;align-items:center;gap:8px;font-weight:bold;font-size:18px}
 .profile-header{display:flex;align-items:center;gap:18px;margin-bottom:25px}
 .avatar{width:70px;height:70px;background:linear-gradient(145deg,#6c63ff,#8b85ff);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:0 5px 15px rgba(108,99,255,0.3)}
@@ -46,9 +47,13 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
 .daily-bonus-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 .daily-countdown{font-size:12px;color:#ffd700;margin-top:8px}
 .coin-rate{font-size:13px;background:rgba(0,0,0,0.3);padding:8px;border-radius:16px;margin-top:10px;text-align:center}
+.bonus-card{background:linear-gradient(135deg,rgba(255,152,0,0.2),rgba(245,124,0,0.2));border:1px solid rgba(255,152,0,0.5);text-align:center;margin-bottom:15px}
+.bonus-card h3{color:#ff9800}
+.bonus-countdown{font-size:12px;color:#ff9800;margin-top:8px}
+.bonus-requirement{font-size:11px;opacity:0.7;margin-top:5px}
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:3000;display:flex;justify-content:center;align-items:center}
 .modal-box{background:linear-gradient(145deg,#1a1e2b,#0f121c);padding:25px;border-radius:30px;text-align:center;border:1px solid rgba(108,99,255,0.5);min-width:300px;max-width:90%}
-.modal-box input,.modal-box select{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:16px;text-align:center;padding:12px;border-radius:12px;width:100%;margin:10px 0}
+.modal-box input{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:16px;text-align:center;padding:12px;border-radius:12px;width:100%;margin:10px 0}
 .modal-box input:focus{outline:none;border-color:#6c63ff}
 .modal-btn{background:linear-gradient(135deg,#6c63ff,#3f37c9);padding:12px 24px;border:none;border-radius:50px;color:white;font-weight:bold;cursor:pointer;margin-top:10px;width:100%}
 .modal-btn-cancel{background:#2a2e45;margin-top:5px}
@@ -71,6 +76,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
     
     <!-- Home Tab -->
     <div class="tab-pane active" id="home-tab">
+      <!-- Daily Bonus (Old) -->
       <div class="card daily-bonus-card">
         <span style="font-size: 40px;">🎁</span>
         <h3>Daily Bonus</h3>
@@ -81,6 +87,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         <div id="dailyCountdown" class="daily-countdown"></div>
       </div>
       
+      <!-- Watch Ad Card -->
       <div class="card" style="text-align: center;">
         <span style="font-size: 64px;">🎬</span>
         <h2 style="margin: 10px 0;">Watch & Earn Coins!</h2>
@@ -104,6 +111,36 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         <p style="font-size: 12px; margin-top: 20px; opacity: 0.6;">
           ✨ Human verification required for each ad ✨
         </p>
+      </div>
+      
+      <!-- Hourly Bonus Card -->
+      <div class="card bonus-card">
+        <span style="font-size: 40px;">⏰</span>
+        <h3>Hourly Bonus</h3>
+        <p>Watch <strong>50 ads</strong> in <strong>1 hour</strong> and earn <strong>500 Coins</strong>!</p>
+        <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#ff9800,#f57c00);">
+          🎯 Your progress: <span id="hourlyAdCount">0</span> / 50 ads this hour
+        </div>
+        <button class="watch-btn" id="hourlyBonusBtn" style="background: linear-gradient(135deg,#ff9800,#f57c00);">
+          🎁 CLAIM HOURLY BONUS (500 COINS) 🎁
+        </button>
+        <div id="hourlyCountdown" class="bonus-countdown"></div>
+        <div class="bonus-requirement">⏰ Timer resets every hour | Need 50 ads watched</div>
+      </div>
+      
+      <!-- Daily Bonus (New - 200 ads) -->
+      <div class="card bonus-card">
+        <span style="font-size: 40px;">📅</span>
+        <h3>Daily Challenge</h3>
+        <p>Watch <strong>200 ads</strong> in <strong>24 hours</strong> and earn <strong>1000 Coins</strong>!</p>
+        <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#2196f3,#1976d2);">
+          🎯 Your progress: <span id="dailyChallengeAdCount">0</span> / 200 ads today
+        </div>
+        <button class="watch-btn" id="dailyChallengeBtn" style="background: linear-gradient(135deg,#2196f3,#1976d2);">
+          🎁 CLAIM DAILY CHALLENGE (1000 COINS) 🎁
+        </button>
+        <div id="dailyChallengeCountdown" class="bonus-countdown"></div>
+        <div class="bonus-requirement">📅 Timer resets every 24 hours | Need 200 ads watched</div>
       </div>
       
       <!-- Tasks Section -->
@@ -173,9 +210,10 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
           <p style="font-size: 12px; opacity: 0.7;">Min: <strong>5,000 coins</strong> | Processing: 24 hours</p>
         </div>
         
-        <div class="withdraw-option" id="directOption" data-type="direct" data-min="10000">
+        <div class="withdraw-option" id="directOption" data-type="direct" data-min="100000">
           <h4>💰 Direct Wallet (DOGE)</h4>
-          <p style="font-size: 12px; opacity: 0.7;">Min: <strong>10,000 coins</strong> | 24-48 hours</p>
+          <p style="font-size: 12px; opacity: 0.7;">Min: <strong>100,000 coins</strong> | Network fee: <strong>35,000 coins</strong></p>
+          <p style="font-size: 11px; color: #ff9800;">⚠️ Total deducted: amount + 35,000 coins network fee</p>
         </div>
         
         <hr>
@@ -227,7 +265,13 @@ const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
 const DOGE_RATE = 0.0001;
 const WITHDRAW_HISTORY_DAYS = 3;
-const TAB_TIMEOUT = 30000; // 30 seconds timeout
+const TAB_TIMEOUT = 30000;
+const HOURLY_BONUS_REQUIREMENT = 50;
+const HOURLY_BONUS_REWARD = 500;
+const DAILY_CHALLENGE_REQUIREMENT = 200;
+const DAILY_CHALLENGE_REWARD = 1000;
+const DIRECT_WALLET_MIN = 100000;
+const DIRECT_WALLET_FEE = 35000;
 
 // ========== USER DATA ==========
 let userData = {
@@ -239,10 +283,16 @@ let userData = {
   referral_coins: 0,
   referrals: [],
   last_daily_bonus: null,
-  task_join_channel: false
+  task_join_channel: false,
+  hourly_bonus_claim_time: null,
+  hourly_bonus_ads: 0,
+  daily_challenge_claim_time: null,
+  daily_challenge_ads: 0
 };
 
 let adsgramController = null;
+let hourlyTimerInterval = null;
+let dailyTimerInterval = null;
 
 // ========== ADSGRAM SETUP ==========
 function initAdsgram() {
@@ -273,43 +323,33 @@ function showAdsgramAd(onSuccess, onError) {
 // ========== SEQUENTIAL AD FUNCTIONS ==========
 function openSmartlinkAndWait(url, onComplete, stepName) {
     const newTab = window.open(url, '_blank');
-    
     if (!newTab) {
-        console.log("Popup blocked, continuing...");
         if (onComplete) onComplete();
         return;
     }
-    
     showMessage(`📢 ${stepName} - Please check the offer, then close the tab to continue...`);
-    
     let tabClosed = false;
-    let timeoutOccurred = false;
-    
     const checkInterval = setInterval(() => {
         if (newTab.closed) {
             if (!tabClosed) {
                 tabClosed = true;
                 clearInterval(checkInterval);
-                showMessage(`✅ Tab closed! Continuing to next step...`);
+                showMessage(`✅ Tab closed! Continuing...`);
                 if (onComplete) onComplete();
             }
         }
     }, 1000);
-    
     setTimeout(() => {
-        if (!tabClosed && !timeoutOccurred) {
-            timeoutOccurred = true;
+        if (!tabClosed) {
             clearInterval(checkInterval);
-            console.log(`Timeout (${TAB_TIMEOUT/1000}s) waiting for tab close, continuing...`);
-            showMessage(`⏰ Timeout! Continuing to next step...`);
+            showMessage(`⏰ Timeout! Continuing...`);
             if (onComplete) onComplete();
         }
     }, TAB_TIMEOUT);
 }
 
 function showSequentialAds(onComplete) {
-    showMessage("🎬 Loading first offer...");
-    
+    showMessage("🎬 Loading offers...");
     setTimeout(() => {
         openSmartlinkAndWait(ADSTERRA_SMARTLINK_1, () => {
             openSmartlinkAndWait(ADSTERRA_SMARTLINK_2, () => {
@@ -325,7 +365,150 @@ function showSequentialAds(onComplete) {
     }, 2000);
 }
 
-// ========== WATCH AD WITH SEQUENTIAL ADS ==========
+// ========== BONUS TRACKING FUNCTIONS ==========
+function updateHourlyBonusUI() {
+    const btn = document.getElementById("hourlyBonusBtn");
+    const countdownDiv = document.getElementById("hourlyCountdown");
+    const progressSpan = document.getElementById("hourlyAdCount");
+    
+    progressSpan.innerText = userData.hourly_bonus_ads || 0;
+    
+    const now = Date.now();
+    const lastClaim = userData.hourly_bonus_claim_time || 0;
+    const timeSinceLastReset = now - lastClaim;
+    const hourMs = 60 * 60 * 1000;
+    
+    if (timeSinceLastReset >= hourMs) {
+        // Reset hourly counter
+        userData.hourly_bonus_ads = 0;
+        userData.hourly_bonus_claim_time = now;
+        updateUserInDB();
+        progressSpan.innerText = 0;
+        countdownDiv.innerHTML = "✨ New hour started! Watch 50 ads to claim 500 coins! ✨";
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    } else {
+        const remainingMs = hourMs - timeSinceLastReset;
+        const minutes = Math.floor(remainingMs / 60000);
+        const seconds = Math.floor((remainingMs % 60000) / 1000);
+        countdownDiv.innerHTML = `⏰ Time remaining: ${minutes}m ${seconds}s`;
+        
+        if ((userData.hourly_bonus_ads || 0) >= HOURLY_BONUS_REQUIREMENT) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+        }
+    }
+}
+
+function updateDailyChallengeUI() {
+    const btn = document.getElementById("dailyChallengeBtn");
+    const countdownDiv = document.getElementById("dailyChallengeCountdown");
+    const progressSpan = document.getElementById("dailyChallengeAdCount");
+    
+    progressSpan.innerText = userData.daily_challenge_ads || 0;
+    
+    const now = Date.now();
+    const lastClaim = userData.daily_challenge_claim_time || 0;
+    const timeSinceLastReset = now - lastClaim;
+    const dayMs = 24 * 60 * 60 * 1000;
+    
+    if (timeSinceLastReset >= dayMs) {
+        // Reset daily counter
+        userData.daily_challenge_ads = 0;
+        userData.daily_challenge_claim_time = now;
+        updateUserInDB();
+        progressSpan.innerText = 0;
+        countdownDiv.innerHTML = "✨ New day started! Watch 200 ads to claim 1000 coins! ✨";
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    } else {
+        const remainingMs = dayMs - timeSinceLastReset;
+        const hours = Math.floor(remainingMs / 3600000);
+        const minutes = Math.floor((remainingMs % 3600000) / 60000);
+        countdownDiv.innerHTML = `⏰ Time remaining: ${hours}h ${minutes}m`;
+        
+        if ((userData.daily_challenge_ads || 0) >= DAILY_CHALLENGE_REQUIREMENT) {
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+        }
+    }
+}
+
+function incrementAdCounters() {
+    // Increment hourly counter
+    const now = Date.now();
+    const lastHourlyReset = userData.hourly_bonus_claim_time || 0;
+    if (now - lastHourlyReset < 60 * 60 * 1000) {
+        userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
+    } else {
+        userData.hourly_bonus_ads = 1;
+        userData.hourly_bonus_claim_time = now;
+    }
+    
+    // Increment daily challenge counter
+    const lastDailyReset = userData.daily_challenge_claim_time || 0;
+    if (now - lastDailyReset < 24 * 60 * 60 * 1000) {
+        userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
+    } else {
+        userData.daily_challenge_ads = 1;
+        userData.daily_challenge_claim_time = now;
+    }
+    
+    updateUserInDB();
+    updateHourlyBonusUI();
+    updateDailyChallengeUI();
+}
+
+// ========== BONUS CLAIM FUNCTIONS ==========
+function claimHourlyBonusWithCaptcha() {
+    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
+        showMessage(`❌ You need to watch ${HOURLY_BONUS_REQUIREMENT} ads this hour to claim! (Current: ${userData.hourly_bonus_ads || 0})`);
+        return;
+    }
+    
+    showCaptcha((success) => {
+        if (success) {
+            showSequentialAds(() => {
+                userData.total_coins += HOURLY_BONUS_REWARD;
+                userData.hourly_bonus_ads = 0;
+                userData.hourly_bonus_claim_time = Date.now();
+                updateUserInDB();
+                updateUI();
+                updateHourlyBonusUI();
+                showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus! Total: ${userData.total_coins}`);
+            });
+        }
+    });
+}
+
+function claimDailyChallengeWithCaptcha() {
+    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
+        showMessage(`❌ You need to watch ${DAILY_CHALLENGE_REQUIREMENT} ads today to claim! (Current: ${userData.daily_challenge_ads || 0})`);
+        return;
+    }
+    
+    showCaptcha((success) => {
+        if (success) {
+            showSequentialAds(() => {
+                userData.total_coins += DAILY_CHALLENGE_REWARD;
+                userData.daily_challenge_ads = 0;
+                userData.daily_challenge_claim_time = Date.now();
+                updateUserInDB();
+                updateUI();
+                updateDailyChallengeUI();
+                showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge! Total: ${userData.total_coins}`);
+            });
+        }
+    });
+}
+
+// ========== WATCH AD ==========
 function watchAdWithSequentialAds() {
     showCaptcha(async (captchaSuccess) => {
         if (!captchaSuccess) {
@@ -336,14 +519,17 @@ function watchAdWithSequentialAds() {
         showSequentialAds(() => {
             userData.total_coins += PER_AD;
             userData.watched_count++;
+            incrementAdCounters();
             updateUserInDB();
             updateUI();
+            updateHourlyBonusUI();
+            updateDailyChallengeUI();
             showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
         });
     });
 }
 
-function claimDailyBonusWithSequentialAds() {
+function claimDailyBonusWithAds() {
     if (!canClaimDailyBonus()) {
         showMessage("❌ Daily bonus already claimed! Come back tomorrow.");
         return;
@@ -366,7 +552,7 @@ function claimDailyBonusWithSequentialAds() {
     });
 }
 
-// ========== WITHDRAW WITH SEQUENTIAL ADS ==========
+// ========== WITHDRAW FUNCTIONS ==========
 function showFaucetPayModal() {
     const minAmount = 5000;
     if (userData.total_coins < minAmount) {
@@ -387,9 +573,11 @@ function showFaucetPayModal() {
 }
 
 function showDirectWalletModal() {
-    const minAmount = 10000;
-    if (userData.total_coins < minAmount) {
-        showMessage(`❌ You need at least ${minAmount} coins for Direct Wallet withdrawal!`);
+    const minAmount = DIRECT_WALLET_MIN;
+    const totalNeeded = minAmount + DIRECT_WALLET_FEE;
+    
+    if (userData.total_coins < totalNeeded) {
+        showMessage(`❌ You need at least ${totalNeeded.toLocaleString()} coins (${minAmount.toLocaleString()} + ${DIRECT_WALLET_FEE.toLocaleString()} fee) for Direct Wallet withdrawal!`);
         return;
     }
     
@@ -422,7 +610,11 @@ async function loadUserFromDB(telegramId) {
                 referral_coins: users[0].referral_coins || 0,
                 referrals: [],
                 last_daily_bonus: users[0].last_daily_bonus || null,
-                task_join_channel: users[0].task_join_channel || false
+                task_join_channel: users[0].task_join_channel || false,
+                hourly_bonus_claim_time: users[0].hourly_bonus_claim_time || null,
+                hourly_bonus_ads: users[0].hourly_bonus_ads || 0,
+                daily_challenge_claim_time: users[0].daily_challenge_claim_time || null,
+                daily_challenge_ads: users[0].daily_challenge_ads || 0
             };
         } else {
             await createNewUser(telegramId);
@@ -434,6 +626,8 @@ async function loadUserFromDB(telegramId) {
         updateDailyBonusUI();
         renderHistory();
         updateTaskUI();
+        updateHourlyBonusUI();
+        updateDailyChallengeUI();
     } catch (error) {
         console.error(error);
         showMessage("❌ Database connection error!");
@@ -451,7 +645,11 @@ async function createNewUser(telegramId) {
             watched_count: 0,
             referral_coins: 0,
             last_daily_bonus: null,
-            task_join_channel: false
+            task_join_channel: false,
+            hourly_bonus_claim_time: null,
+            hourly_bonus_ads: 0,
+            daily_challenge_claim_time: null,
+            daily_challenge_ads: 0
         })
     });
 }
@@ -465,7 +663,11 @@ async function updateUserInDB() {
             watched_count: userData.watched_count,
             referral_coins: userData.referral_coins,
             last_daily_bonus: userData.last_daily_bonus,
-            task_join_channel: userData.task_join_channel
+            task_join_channel: userData.task_join_channel,
+            hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
+            hourly_bonus_ads: userData.hourly_bonus_ads,
+            daily_challenge_claim_time: userData.daily_challenge_claim_time,
+            daily_challenge_ads: userData.daily_challenge_ads
         })
     });
 }
@@ -668,7 +870,10 @@ function showFaucetPayModalForm() {
 }
 
 function showDirectWalletModalForm() {
-    const minAmount = 10000;
+    const minAmount = DIRECT_WALLET_MIN;
+    const fee = DIRECT_WALLET_FEE;
+    const totalNeeded = minAmount + fee;
+    
     let modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -676,8 +881,9 @@ function showDirectWalletModalForm() {
             <div class="modal-title">💰 Direct Wallet Withdrawal (DOGE)</div>
             <div class="modal-hint">🐕 Enter your DOGE wallet address</div>
             <input type="text" id="walletInput" placeholder="Your DOGE Wallet Address" autocomplete="off">
-            <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount} coins)</div>
-            <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins}">
+            <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount.toLocaleString()} coins)</div>
+            <div class="modal-hint" style="color:#ff9800;">⚠️ Network fee: ${fee.toLocaleString()} coins will be deducted</div>
+            <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins - fee}">
             <button class="modal-btn" id="confirmWithdraw">Confirm Withdrawal</button>
             <button class="modal-btn modal-btn-cancel" id="cancelModal">Cancel</button>
         </div>
@@ -690,8 +896,8 @@ function showDirectWalletModalForm() {
             showMessage("❌ Invalid DOGE address!");
             return;
         }
-        if (isNaN(amount) || amount < minAmount || amount > userData.total_coins) {
-            showMessage(`❌ Invalid amount! Min ${minAmount} coins.`);
+        if (isNaN(amount) || amount < minAmount || (amount + fee) > userData.total_coins) {
+            showMessage(`❌ Invalid amount! Min ${minAmount.toLocaleString()} coins. Need ${fee.toLocaleString()} fee.`);
             return;
         }
         let success = await saveWithdrawRequest('direct', amount, walletAddress);
@@ -743,19 +949,29 @@ function showCaptcha(callback) {
 function getInviteLink() {
     return `https://t.me/${BOT_USERNAME}?start=ref_${userData.telegram_id}`;
 }
+
 function copyInviteLink() {
     let link = getInviteLink();
     navigator.clipboard.writeText(link);
     showMessage("✅ Invite link copied!");
 }
+
 function shareInviteLink() {
     let link = getInviteLink();
     if (navigator.share) {
-        navigator.share({ title: "Join my Mini App!", text: "Watch ads and earn coins!", url: link }).catch(() => copyInviteLink());
+        navigator.share({
+            title: "Join my Mini App!",
+            text: "Watch ads and earn DOGE coins! Get 100 bonus coins on signup!",
+            url: link
+        }).catch((err) => {
+            console.log("Share failed:", err);
+            copyInviteLink();
+        });
     } else {
         copyInviteLink();
     }
 }
+
 function checkReferral() {
     const urlParams = new URLSearchParams(window.location.search);
     const startParam = urlParams.get('start');
@@ -782,6 +998,7 @@ function updateUI() {
     document.getElementById("userId").innerText = userData.telegram_id;
     document.getElementById("dogeValue").innerText = dogeValue.toFixed(6);
 }
+
 async function renderHistory() {
     let container = document.getElementById("historyContainer");
     try {
@@ -813,6 +1030,7 @@ async function renderHistory() {
         container.innerHTML = '<p style="text-align:center;opacity:0.5">Error loading history</p>';
     }
 }
+
 function renderReferralList() {
     let container = document.getElementById("referralListContainer");
     if (!userData.referrals || userData.referrals.length === 0) {
@@ -826,6 +1044,7 @@ function renderReferralList() {
     }
     container.innerHTML = html;
 }
+
 function showMessage(msg) {
     let old = document.querySelector(".toast-message");
     if (old) old.remove();
@@ -835,6 +1054,7 @@ function showMessage(msg) {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
 }
+
 function initTabs() {
     let btns = document.querySelectorAll(".tab-btn");
     let panes = document.querySelectorAll(".tab-pane");
@@ -851,10 +1071,21 @@ function initTabs() {
     });
 }
 
+// ========== TIMER INTERVALS ==========
+function startTimers() {
+    if (hourlyTimerInterval) clearInterval(hourlyTimerInterval);
+    if (dailyTimerInterval) clearInterval(dailyTimerInterval);
+    
+    hourlyTimerInterval = setInterval(() => updateHourlyBonusUI(), 1000);
+    dailyTimerInterval = setInterval(() => updateDailyChallengeUI(), 1000);
+}
+
 // ========== INITIALIZATION ==========
 async function init() {
     initTabs();
     initAdsgram();
+    startTimers();
+    
     if (window.Telegram && Telegram.WebApp) {
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
@@ -876,13 +1107,17 @@ async function init() {
     }
     await loadUserFromDB(userData.telegram_id);
     checkReferral();
+    
     document.getElementById("mainWatchBtn").onclick = () => watchAdWithSequentialAds();
     document.getElementById("copyInviteBtn").onclick = () => copyInviteLink();
     document.getElementById("shareInviteBtn").onclick = () => shareInviteLink();
-    document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithSequentialAds();
+    document.getElementById("dailyBonusBtn").onclick = () => claimDailyBonusWithAds();
+    document.getElementById("hourlyBonusBtn").onclick = () => claimHourlyBonusWithCaptcha();
+    document.getElementById("dailyChallengeBtn").onclick = () => claimDailyChallengeWithCaptcha();
     document.getElementById("faucetpayOption").onclick = () => showFaucetPayModal();
     document.getElementById("directOption").onclick = () => showDirectWalletModal();
     document.getElementById("joinChannelBtn").onclick = () => checkChannelMembershipAndReward();
+    
     setInterval(() => updateDailyBonusUI(), 60000);
     setInterval(() => renderHistory(), 300000);
 }
