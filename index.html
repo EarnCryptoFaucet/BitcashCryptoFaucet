@@ -376,6 +376,7 @@ function updateHourlyBonusUI() {
     const now = Date.now();
     const lastClaim = userData.hourly_bonus_claim_time || 0;
     const hourMs = 60 * 60 * 1000;
+    const timeSinceLastReset = now - lastClaim;
     
     if (timeSinceLastReset >= hourMs) {
         userData.hourly_bonus_ads = 0;
@@ -386,7 +387,7 @@ function updateHourlyBonusUI() {
         btn.disabled = false;
         btn.style.opacity = "1";
     } else {
-        const remainingMs = hourMs - (now - lastClaim);
+        const remainingMs = hourMs - timeSinceLastReset;
         const minutes = Math.floor(remainingMs / 60000);
         const seconds = Math.floor((remainingMs % 60000) / 1000);
         countdownDiv.innerHTML = `⏰ Time remaining: ${minutes}m ${seconds}s`;
@@ -411,8 +412,9 @@ function updateDailyChallengeUI() {
     const now = Date.now();
     const lastClaim = userData.daily_challenge_claim_time || 0;
     const dayMs = 24 * 60 * 60 * 1000;
+    const timeSinceLastReset = now - lastClaim;
     
-    if (now - lastClaim >= dayMs) {
+    if (timeSinceLastReset >= dayMs) {
         userData.daily_challenge_ads = 0;
         userData.daily_challenge_claim_time = now;
         updateUserInDB();
@@ -421,7 +423,7 @@ function updateDailyChallengeUI() {
         btn.disabled = false;
         btn.style.opacity = "1";
     } else {
-        const remainingMs = dayMs - (now - lastClaim);
+        const remainingMs = dayMs - timeSinceLastReset;
         const hours = Math.floor(remainingMs / 3600000);
         const minutes = Math.floor((remainingMs % 3600000) / 60000);
         countdownDiv.innerHTML = `⏰ Time remaining: ${hours}h ${minutes}m`;
@@ -438,7 +440,7 @@ function updateDailyChallengeUI() {
 
 function incrementAdCounters() {
     const now = Date.now();
-    const lastHourlyReset = userData.hourly_bonus_claim_time || 0;
+    const lastHourlyReset = userData.hourly_bonus_claim_time || now;
     if (now - lastHourlyReset < 60 * 60 * 1000) {
         userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
     } else {
@@ -446,7 +448,7 @@ function incrementAdCounters() {
         userData.hourly_bonus_claim_time = now;
     }
     
-    const lastDailyReset = userData.daily_challenge_claim_time || 0;
+    const lastDailyReset = userData.daily_challenge_claim_time || now;
     if (now - lastDailyReset < 24 * 60 * 60 * 1000) {
         userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
     } else {
