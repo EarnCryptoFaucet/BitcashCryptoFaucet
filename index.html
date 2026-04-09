@@ -128,7 +128,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         <div class="bonus-requirement">⏰ Timer resets every hour | Need 50 ads watched</div>
       </div>
       
-      <!-- Daily Bonus (New - 200 ads) -->
+      <!-- Daily Challenge Bonus -->
       <div class="card bonus-card">
         <span style="font-size: 40px;">📅</span>
         <h3>Daily Challenge</h3>
@@ -375,11 +375,9 @@ function updateHourlyBonusUI() {
     
     const now = Date.now();
     const lastClaim = userData.hourly_bonus_claim_time || 0;
-    const timeSinceLastReset = now - lastClaim;
     const hourMs = 60 * 60 * 1000;
     
     if (timeSinceLastReset >= hourMs) {
-        // Reset hourly counter
         userData.hourly_bonus_ads = 0;
         userData.hourly_bonus_claim_time = now;
         updateUserInDB();
@@ -388,7 +386,7 @@ function updateHourlyBonusUI() {
         btn.disabled = false;
         btn.style.opacity = "1";
     } else {
-        const remainingMs = hourMs - timeSinceLastReset;
+        const remainingMs = hourMs - (now - lastClaim);
         const minutes = Math.floor(remainingMs / 60000);
         const seconds = Math.floor((remainingMs % 60000) / 1000);
         countdownDiv.innerHTML = `⏰ Time remaining: ${minutes}m ${seconds}s`;
@@ -412,11 +410,9 @@ function updateDailyChallengeUI() {
     
     const now = Date.now();
     const lastClaim = userData.daily_challenge_claim_time || 0;
-    const timeSinceLastReset = now - lastClaim;
     const dayMs = 24 * 60 * 60 * 1000;
     
-    if (timeSinceLastReset >= dayMs) {
-        // Reset daily counter
+    if (now - lastClaim >= dayMs) {
         userData.daily_challenge_ads = 0;
         userData.daily_challenge_claim_time = now;
         updateUserInDB();
@@ -425,7 +421,7 @@ function updateDailyChallengeUI() {
         btn.disabled = false;
         btn.style.opacity = "1";
     } else {
-        const remainingMs = dayMs - timeSinceLastReset;
+        const remainingMs = dayMs - (now - lastClaim);
         const hours = Math.floor(remainingMs / 3600000);
         const minutes = Math.floor((remainingMs % 3600000) / 60000);
         countdownDiv.innerHTML = `⏰ Time remaining: ${hours}h ${minutes}m`;
@@ -441,7 +437,6 @@ function updateDailyChallengeUI() {
 }
 
 function incrementAdCounters() {
-    // Increment hourly counter
     const now = Date.now();
     const lastHourlyReset = userData.hourly_bonus_claim_time || 0;
     if (now - lastHourlyReset < 60 * 60 * 1000) {
@@ -451,7 +446,6 @@ function incrementAdCounters() {
         userData.hourly_bonus_claim_time = now;
     }
     
-    // Increment daily challenge counter
     const lastDailyReset = userData.daily_challenge_claim_time || 0;
     if (now - lastDailyReset < 24 * 60 * 60 * 1000) {
         userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
@@ -637,7 +631,12 @@ async function loadUserFromDB(telegramId) {
 async function createNewUser(telegramId) {
     await fetch(`${SUPABASE_URL}/rest/v1/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        headers: { 
+            'Content-Type': 'application/json', 
+            'apikey': SUPABASE_KEY, 
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=minimal'
+        },
         body: JSON.stringify({
             telegram_id: telegramId,
             first_name: userData.first_name,
@@ -655,27 +654,48 @@ async function createNewUser(telegramId) {
 }
 
 async function updateUserInDB() {
-    await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({
-            total_coins: userData.total_coins,
-            watched_count: userData.watched_count,
-            referral_coins: userData.referral_coins,
-            last_daily_bonus: userData.last_daily_bonus,
-            task_join_channel: userData.task_join_channel,
-            hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
-            hourly_bonus_ads: userData.hourly_bonus_ads,
-            daily_challenge_claim_time: userData.daily_challenge_claim_time,
-            daily_challenge_ads: userData.daily_challenge_ads
-        })
-    });
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                total_coins: userData.total_coins,
+                watched_count: userData.watched_count,
+                referral_coins: userData.referral_coins,
+                last_daily_bonus: userData.last_daily_bonus,
+                task_join_channel: userData.task_join_channel,
+                hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
+                hourly_bonus_ads: userData.hourly_bonus_ads,
+                daily_challenge_claim_time: userData.daily_challenge_claim_time,
+                daily_challenge_ads: userData.daily_challenge_ads
+            })
+        });
+        
+        if (response.ok) {
+            console.log("✅ Saved successfully to DB!");
+        } else {
+            const errorText = await response.text();
+            console.error("❌ Save failed:", errorText);
+        }
+    } catch (error) {
+        console.error("Error updating user:", error);
+    }
 }
 
 async function saveWithdrawRequest(type, amount, walletAddress) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        headers: { 
+            'Content-Type': 'application/json', 
+            'apikey': SUPABASE_KEY, 
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=minimal'
+        },
         body: JSON.stringify({
             user_id: userData.telegram_id,
             user_name: userData.first_name,
@@ -702,7 +722,12 @@ async function loadReferralsFromDB() {
 async function saveReferral(referredUserId) {
     await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        headers: { 
+            'Content-Type': 'application/json', 
+            'apikey': SUPABASE_KEY, 
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=minimal'
+        },
         body: JSON.stringify({ referred_by: userData.telegram_id })
     });
     userData.total_coins += REFERRAL_BONUS;
@@ -872,7 +897,6 @@ function showFaucetPayModalForm() {
 function showDirectWalletModalForm() {
     const minAmount = DIRECT_WALLET_MIN;
     const fee = DIRECT_WALLET_FEE;
-    const totalNeeded = minAmount + fee;
     
     let modal = document.createElement('div');
     modal.className = 'modal-overlay';
