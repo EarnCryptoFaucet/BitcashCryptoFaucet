@@ -456,7 +456,7 @@ function shareInviteLink() {
     }
 }
 
-// ========== SUPABASE CORE FUNCTIONS ==========
+// ========== SUPABASE CORE FUNCTIONS (SIMPLIFIED AND FIXED) ==========
 async function loadUserFromDB(telegramId) {
     try {
         console.log("📥 Loading user:", telegramId);
@@ -528,6 +528,7 @@ async function createNewUser(telegramId) {
     });
 }
 
+// FIXED: Simplified updateUserInDB that always returns true/false
 async function updateUserInDB() {
     try {
         const payload = {
@@ -542,6 +543,8 @@ async function updateUserInDB() {
             daily_challenge_ads: userData.daily_challenge_ads
         };
         
+        console.log("💾 Saving to DB:", userData.total_coins, "coins");
+        
         const response = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}`, {
             method: 'PATCH',
             headers: {
@@ -554,21 +557,25 @@ async function updateUserInDB() {
         });
         
         if (response.ok) {
-            console.log("✅ Saved to DB:", userData.total_coins, "coins");
+            console.log("✅ Saved to DB successfully!");
+            return true;
         } else {
             const errorText = await response.text();
             console.error("❌ Save failed:", errorText);
+            return false;
         }
     } catch (error) {
-        console.error("Error updating user:", error);
+        console.error("❌ Error updating user:", error);
+        return false;
     }
 }
 
-// ========== SAVE REFERRAL (ONLY BONUS, NO COMMISSION) ==========
+// ========== SAVE REFERRAL (FIXED) ==========
 async function saveReferral(referredUserId, referrerId) {
     try {
         console.log(`💾 Saving referral: ${referredUserId} -> ${referrerId}`);
         
+        // 1. Update the new user with referrer info
         await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
             method: 'PATCH',
             headers: { 
@@ -580,6 +587,7 @@ async function saveReferral(referredUserId, referrerId) {
             body: JSON.stringify({ referred_by: referrerId })
         });
         
+        // 2. Get current referrer data from database
         const refRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
         });
@@ -589,7 +597,8 @@ async function saveReferral(referredUserId, referrerId) {
             const newTotal = (refData[0].total_coins || 0) + REFERRAL_BONUS;
             const newReferral = (refData[0].referral_coins || 0) + REFERRAL_BONUS;
             
-            await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
+            // 3. Update referrer in database
+            const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
                 method: 'PATCH',
                 headers: { 
                     'Content-Type': 'application/json', 
@@ -599,14 +608,19 @@ async function saveReferral(referredUserId, referrerId) {
                 },
                 body: JSON.stringify({ total_coins: newTotal, referral_coins: newReferral })
             });
-            console.log(`✅ Added ${REFERRAL_BONUS} bonus to ${referrerId}`);
             
-            if (referrerId === userData.telegram_id) {
-                userData.total_coins = newTotal;
-                userData.referral_coins = newReferral;
-                updateUI();
-                loadReferralsFromDB();
-                showMessage(`🎉 +${REFERRAL_BONUS} referral bonus!`);
+            if (updateRes.ok) {
+                console.log(`✅ Added ${REFERRAL_BONUS} bonus to referrer ${referrerId}`);
+                
+                // 4. If the referrer is the current user, update local data AND save to DB
+                if (referrerId === userData.telegram_id) {
+                    userData.total_coins = newTotal;
+                    userData.referral_coins = newReferral;
+                    await updateUserInDB(); // Force save to DB immediately
+                    updateUI();
+                    await loadReferralsFromDB();
+                    showMessage(`🎉 +${REFERRAL_BONUS} referral bonus added to your account!`);
+                }
             }
         }
     } catch (error) {
@@ -630,6 +644,11 @@ function checkReferral() {
             .then(data => {
                 if (data && data.length > 0 && !data[0].referred_by) {
                     saveReferral(currentUserId, referrerId);
+                } else if (data && data.length > 0 && data[0].referred_by) {
+                    console.log("User already has a referrer:", data[0].referred_by);
+                } else {
+                    console.log("User not found yet, retrying...");
+                    setTimeout(() => checkReferral(), 2000);
                 }
             })
             .catch(err => console.error("Error checking referral:", err));
@@ -1155,6 +1174,7 @@ async function init() {
             userData.telegram_id = user.id;
             userData.first_name = user.first_name || "User";
             userData.username = user.username || null;
+            console.log("✅ Telegram user ID:", userData.telegram_id);
         }
     }
     if (!userData.telegram_id) {
@@ -1165,6 +1185,7 @@ async function init() {
         }
         userData.telegram_id = parseInt(savedId);
         userData.first_name = "Test User";
+        console.log("⚠️ Demo mode, user ID:", userData.telegram_id);
     }
     
     await loadUserFromDB(userData.telegram_id);
