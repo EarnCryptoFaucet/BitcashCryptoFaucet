@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Telegram Mini App - Watch & Earn</title>
 <style>
-/* ========== STYLES ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui;background:linear-gradient(145deg,#1a1e2b,#0f121c);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center}
 .app-container{max-width:500px;width:100%;background:rgba(18,22,35,0.7);backdrop-filter:blur(10px);border-radius:32px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -163,7 +162,6 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
       <div class="card">
         <h3 style="margin-bottom: 10px;">👥 Invite Friends</h3>
         <p style="opacity: 0.8;">Get <strong>100 bonus coins</strong> per referral!</p>
-        <p style="font-size: 12px; color: #ffd700; margin-top: 5px;">💰 PLUS: Earn <strong>2 coins</strong> every time your referral watches an ad!</p>
         <div class="coin-badge" style="margin: 15px 0;">
           🏆 Referral Coins: <span id="refCoinsEarned">0</span>
         </div>
@@ -264,7 +262,6 @@ const TASK_JOIN_CHANNEL_REWARD = 20;
 const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
-const REFERRAL_COMMISSION = 2;
 const DOGE_RATE = 0.0001;
 const WITHDRAW_HISTORY_DAYS = 3;
 const TAB_TIMEOUT = 30000;
@@ -335,10 +332,7 @@ function initInterstitialAd() {
 }
 
 function showInterstitialAd() {
-    if (!window.Telegram || !Telegram.WebApp) {
-        console.log("Not in Telegram, skipping interstitial");
-        return;
-    }
+    if (!window.Telegram || !Telegram.WebApp) return;
     const controller = initInterstitialAd();
     if (!controller) return;
     controller.show().catch(e => console.log("Interstitial error:", e));
@@ -570,51 +564,7 @@ async function updateUserInDB() {
     }
 }
 
-// ========== REFERRAL COMMISSION ==========
-async function addReferralCommission(userId) {
-    try {
-        const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}&select=referred_by`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-        });
-        const userDataRes = await userRes.json();
-        
-        if (userDataRes && userDataRes.length > 0 && userDataRes[0].referred_by) {
-            const referrerId = userDataRes[0].referred_by;
-            console.log(`💰 Adding ${REFERRAL_COMMISSION} to referrer ${referrerId}`);
-            
-            const refRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-            const refData = await refRes.json();
-            
-            if (refData && refData.length > 0) {
-                const newTotal = (refData[0].total_coins || 0) + REFERRAL_COMMISSION;
-                const newReferral = (refData[0].referral_coins || 0) + REFERRAL_COMMISSION;
-                
-                await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({ total_coins: newTotal, referral_coins: newReferral })
-                });
-                console.log(`✅ Added ${REFERRAL_COMMISSION} commission`);
-                
-                if (referrerId === userData.telegram_id) {
-                    userData.total_coins = newTotal;
-                    userData.referral_coins = newReferral;
-                    updateUI();
-                }
-            }
-        }
-    } catch (error) {
-        console.error("Error adding commission:", error);
-    }
-}
-
+// ========== SAVE REFERRAL (ONLY BONUS, NO COMMISSION) ==========
 async function saveReferral(referredUserId, referrerId) {
     try {
         console.log(`💾 Saving referral: ${referredUserId} -> ${referrerId}`);
@@ -1141,7 +1091,6 @@ function watchAdWithSequentialAds() {
         showRewardAdWithInterstitial(async () => {
             userData.total_coins += PER_AD;
             userData.watched_count++;
-            await addReferralCommission(userData.telegram_id);
             incrementAdCounters();
             await updateUserInDB();
             updateUI();
