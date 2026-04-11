@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Telegram Mini App - Watch & Earn</title>
 <style>
+/* ========== YOUR EXISTING STYLES (KEEP AS IS FROM PREVIOUS VERSION) ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui;background:linear-gradient(145deg,#1a1e2b,#0f121c);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center}
 .app-container{max-width:500px;width:100%;background:rgba(18,22,35,0.7);backdrop-filter:blur(10px);border-radius:32px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -410,7 +411,7 @@ async function updateUserInDB() {
             daily_challenge_ads: userData.daily_challenge_ads
         };
         
-        console.log("📤 Updating user in DB:", payload);
+        console.log("📤 Updating user:", userData.telegram_id, "Coins:", userData.total_coins);
         
         const response = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}`, {
             method: 'PATCH',
@@ -424,65 +425,63 @@ async function updateUserInDB() {
         });
         
         if (response.ok) {
-            console.log("✅ Saved successfully to DB!");
-            return true;
+            console.log("✅ Saved to DB!");
         } else {
             const errorText = await response.text();
             console.error("❌ Save failed:", errorText);
-            return false;
         }
     } catch (error) {
         console.error("❌ Error updating user:", error);
-        return false;
     }
 }
 
-// ========== LOAD USER FROM DB (FIXED) ==========
+// ========== LOAD USER FROM DB (COMPLETELY REWRITTEN) ==========
 async function loadUserFromDB(telegramId) {
     try {
-        console.log("📥 Loading user from DB:", telegramId);
+        console.log("📥 Loading user:", telegramId);
         
         const response = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${telegramId}&select=*`, {
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
         });
         const users = await response.json();
         
-        console.log("📋 User data from DB:", users);
-        
         if (users && users.length > 0) {
-            userData = {
-                telegram_id: users[0].telegram_id,
-                username: users[0].username,
-                first_name: users[0].first_name || "User",
-                total_coins: users[0].total_coins || 0,
-                watched_count: users[0].watched_count || 0,
-                referral_coins: users[0].referral_coins || 0,
-                referrals: [],
-                last_daily_bonus: users[0].last_daily_bonus || null,
-                task_join_channel: users[0].task_join_channel || false,
-                hourly_bonus_claim_time: users[0].hourly_bonus_claim_time || null,
-                hourly_bonus_ads: users[0].hourly_bonus_ads || 0,
-                daily_challenge_claim_time: users[0].daily_challenge_claim_time || null,
-                daily_challenge_ads: users[0].daily_challenge_ads || 0
-            };
-            console.log(`✅ User loaded - total_coins: ${userData.total_coins}, referral_coins: ${userData.referral_coins}`);
-            updateUI();
+            const dbUser = users[0];
+            
+            // Update userData with database values
+            userData.telegram_id = dbUser.telegram_id;
+            userData.username = dbUser.username;
+            userData.first_name = dbUser.first_name || "User";
+            userData.total_coins = dbUser.total_coins || 0;
+            userData.watched_count = dbUser.watched_count || 0;
+            userData.referral_coins = dbUser.referral_coins || 0;
+            userData.last_daily_bonus = dbUser.last_daily_bonus || null;
+            userData.task_join_channel = dbUser.task_join_channel || false;
+            userData.hourly_bonus_claim_time = dbUser.hourly_bonus_claim_time || null;
+            userData.hourly_bonus_ads = dbUser.hourly_bonus_ads || 0;
+            userData.daily_challenge_claim_time = dbUser.daily_challenge_claim_time || null;
+            userData.daily_challenge_ads = dbUser.daily_challenge_ads || 0;
+            
+            console.log(`✅ Loaded - Total Coins: ${userData.total_coins}, Referral Coins: ${userData.referral_coins}`);
         } else {
-            console.log("🆕 New user, creating...");
+            console.log("🆕 Creating new user");
             await createNewUser(telegramId);
             await loadUserFromDB(telegramId);
             return;
         }
         
+        // Update UI after loading
+        updateUI();
         loadReferralsFromDB();
         updateDailyBonusUI();
         renderHistory();
         updateTaskUI();
         updateHourlyBonusUI();
         updateDailyChallengeUI();
+        
     } catch (error) {
         console.error("❌ Error loading user:", error);
-        showMessage("❌ Database connection error!");
+        showMessage("❌ Database error!");
     }
 }
 
@@ -511,11 +510,9 @@ async function createNewUser(telegramId) {
     });
 }
 
-// ========== REFERRAL COMMISSION FUNCTION ==========
+// ========== REFERRAL COMMISSION ==========
 async function addReferralCommission(userId) {
     try {
-        console.log("🔍 addReferralCommission called for user:", userId);
-        
         const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}&select=referred_by`, {
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
         });
@@ -523,7 +520,7 @@ async function addReferralCommission(userId) {
         
         if (userDataRes && userDataRes.length > 0 && userDataRes[0].referred_by) {
             const referrerId = userDataRes[0].referred_by;
-            console.log(`💰 Adding ${REFERRAL_COMMISSION} coins to referrer ${referrerId}`);
+            console.log(`💰 Adding ${REFERRAL_COMMISSION} to referrer ${referrerId}`);
             
             const referrerResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -531,12 +528,10 @@ async function addReferralCommission(userId) {
             const referrerData = await referrerResponse.json();
             
             if (referrerData && referrerData.length > 0) {
-                const currentTotal = referrerData[0].total_coins || 0;
-                const currentReferral = referrerData[0].referral_coins || 0;
-                const newTotalCoins = currentTotal + REFERRAL_COMMISSION;
-                const newReferralCoins = currentReferral + REFERRAL_COMMISSION;
+                const newTotal = (referrerData[0].total_coins || 0) + REFERRAL_COMMISSION;
+                const newReferral = (referrerData[0].referral_coins || 0) + REFERRAL_COMMISSION;
                 
-                const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
+                await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -545,32 +540,30 @@ async function addReferralCommission(userId) {
                         'Prefer': 'return=minimal'
                     },
                     body: JSON.stringify({
-                        total_coins: newTotalCoins,
-                        referral_coins: newReferralCoins
+                        total_coins: newTotal,
+                        referral_coins: newReferral
                     })
                 });
+                console.log(`✅ Added ${REFERRAL_COMMISSION} commission to ${referrerId}`);
                 
-                if (updateResponse.ok) {
-                    console.log(`✅ Added ${REFERRAL_COMMISSION} commission to referrer ${referrerId}`);
-                    if (referrerId === userData.telegram_id) {
-                        userData.total_coins = newTotalCoins;
-                        userData.referral_coins = newReferralCoins;
-                        updateUI();
-                    }
+                if (referrerId === userData.telegram_id) {
+                    userData.total_coins = newTotal;
+                    userData.referral_coins = newReferral;
+                    updateUI();
                 }
             }
         }
     } catch (error) {
-        console.error("Error adding referral commission:", error);
+        console.error("Error adding commission:", error);
     }
 }
 
-// ========== SAVE REFERRAL (FIXED) ==========
+// ========== SAVE REFERRAL ==========
 async function saveReferral(referredUserId, referrerId) {
     try {
-        console.log("💾 saveReferral called - referred:", referredUserId, "referrer:", referrerId);
+        console.log(`💾 Saving referral: ${referredUserId} -> ${referrerId}`);
         
-        const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
+        await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
             method: 'PATCH',
             headers: { 
                 'Content-Type': 'application/json', 
@@ -581,48 +574,40 @@ async function saveReferral(referredUserId, referrerId) {
             body: JSON.stringify({ referred_by: referrerId })
         });
         
-        if (updateResponse.ok) {
-            console.log("✅ User referred_by updated successfully");
+        const referrerResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        const referrerData = await referrerResponse.json();
+        
+        if (referrerData && referrerData.length > 0) {
+            const newTotal = (referrerData[0].total_coins || 0) + REFERRAL_BONUS;
+            const newReferral = (referrerData[0].referral_coins || 0) + REFERRAL_BONUS;
             
-            const getReferrerResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'apikey': SUPABASE_KEY, 
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                    total_coins: newTotal,
+                    referral_coins: newReferral
+                })
             });
-            const referrerData = await getReferrerResponse.json();
+            console.log(`✅ Added ${REFERRAL_BONUS} bonus to ${referrerId}`);
             
-            if (referrerData && referrerData.length > 0) {
-                const currentTotal = referrerData[0].total_coins || 0;
-                const currentReferral = referrerData[0].referral_coins || 0;
-                const newTotalCoins = currentTotal + REFERRAL_BONUS;
-                const newReferralCoins = currentReferral + REFERRAL_BONUS;
-                
-                const addBonusResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
-                    method: 'PATCH',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'apikey': SUPABASE_KEY, 
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        total_coins: newTotalCoins,
-                        referral_coins: newReferralCoins
-                    })
-                });
-                
-                if (addBonusResponse.ok) {
-                    console.log(`✅ Bonus added to referrer ${referrerId}: +${REFERRAL_BONUS} coins`);
-                    if (referrerId === userData.telegram_id) {
-                        userData.total_coins = newTotalCoins;
-                        userData.referral_coins = newReferralCoins;
-                        updateUI();
-                        loadReferralsFromDB();
-                        showMessage(`🎉 Congratulations! +${REFERRAL_BONUS} referral bonus coins added to your account!`);
-                    }
-                }
+            if (referrerId === userData.telegram_id) {
+                userData.total_coins = newTotal;
+                userData.referral_coins = newReferral;
+                updateUI();
+                loadReferralsFromDB();
+                showMessage(`🎉 +${REFERRAL_BONUS} referral bonus!`);
             }
         }
     } catch (error) {
-        console.error("Error in saveReferral:", error);
+        console.error("Error saving referral:", error);
     }
 }
 
@@ -631,46 +616,26 @@ function checkReferral() {
     const urlParams = new URLSearchParams(window.location.search);
     const startParam = urlParams.get('start');
     
-    console.log("🔍 Checking referral - start param:", startParam);
-    
     if (startParam && startParam.startsWith('ref_')) {
         const referrerId = parseInt(startParam.replace('ref_', ''));
         const currentUserId = userData.telegram_id;
         
-        console.log(`📋 Referrer ID: ${referrerId}, Current User ID: ${currentUserId}`);
-        
-        if (referrerId === currentUserId) {
-            console.log("⚠️ Self-referral detected - ignoring");
-            return;
+        if (referrerId !== currentUserId) {
+            fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${currentUserId}&select=referred_by`, {
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.length > 0 && !data[0].referred_by) {
+                    saveReferral(currentUserId, referrerId);
+                }
+            })
+            .catch(err => console.error("Error checking referral:", err));
         }
-        
-        fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${currentUserId}&select=referred_by`, {
-            headers: { 
-                'apikey': SUPABASE_KEY, 
-                'Authorization': `Bearer ${SUPABASE_KEY}` 
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            console.log("📋 User data from DB:", data);
-            
-            if (data && data.length > 0 && !data[0].referred_by) {
-                console.log("💾 Saving referral for user", currentUserId, "from", referrerId);
-                saveReferral(currentUserId, referrerId);
-            } else if (data && data.length > 0 && data[0].referred_by) {
-                console.log("ℹ️ User already has a referrer:", data[0].referred_by);
-            } else {
-                console.log("⏳ User not found in DB yet, will try later");
-                setTimeout(() => checkReferral(), 2000);
-            }
-        })
-        .catch(err => {
-            console.error("❌ Error checking referral:", err);
-        });
     }
 }
 
-// ========== BONUS TRACKING FUNCTIONS ==========
+// ========== BONUS TRACKING (KEEP EXISTING) ==========
 function updateHourlyBonusUI() {
     const btn = document.getElementById("hourlyBonusBtn");
     const countdownDiv = document.getElementById("hourlyCountdown");
@@ -794,54 +759,11 @@ function incrementAdCounters() {
     updateDailyChallengeUI();
 }
 
-// ========== BONUS CLAIM FUNCTIONS ==========
-function claimHourlyBonusWithCaptcha() {
-    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
-        showMessage(`❌ You need to watch ${HOURLY_BONUS_REQUIREMENT} ads this hour to claim! (Current: ${userData.hourly_bonus_ads || 0})`);
-        return;
-    }
-    
-    showCaptcha((success) => {
-        if (success) {
-            showRewardAdWithInterstitial(() => {
-                userData.total_coins += HOURLY_BONUS_REWARD;
-                userData.hourly_bonus_ads = 0;
-                userData.hourly_bonus_claim_time = new Date().toISOString();
-                updateUserInDB();
-                updateUI();
-                updateHourlyBonusUI();
-                showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus! Total: ${userData.total_coins}`);
-            });
-        }
-    });
-}
-
-function claimDailyChallengeWithCaptcha() {
-    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
-        showMessage(`❌ You need to watch ${DAILY_CHALLENGE_REQUIREMENT} ads today to claim! (Current: ${userData.daily_challenge_ads || 0})`);
-        return;
-    }
-    
-    showCaptcha((success) => {
-        if (success) {
-            showRewardAdWithInterstitial(() => {
-                userData.total_coins += DAILY_CHALLENGE_REWARD;
-                userData.daily_challenge_ads = 0;
-                userData.daily_challenge_claim_time = new Date().toISOString();
-                updateUserInDB();
-                updateUI();
-                updateDailyChallengeUI();
-                showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge! Total: ${userData.total_coins}`);
-            });
-        }
-    });
-}
-
-// ========== WATCH AD WITH REFERRAL COMMISSION ==========
+// ========== WATCH AD ==========
 function watchAdWithSequentialAds() {
     showCaptcha(async (captchaSuccess) => {
         if (!captchaSuccess) {
-            showMessage("❌ Verification failed. Please try again.");
+            showMessage("❌ Verification failed");
             return;
         }
         
@@ -850,7 +772,6 @@ function watchAdWithSequentialAds() {
             userData.watched_count++;
             
             await addReferralCommission(userData.telegram_id);
-            
             incrementAdCounters();
             await updateUserInDB();
             updateUI();
@@ -863,25 +784,66 @@ function watchAdWithSequentialAds() {
 
 function claimDailyBonusWithAds() {
     if (!canClaimDailyBonus()) {
-        showMessage("❌ Daily bonus already claimed! Come back tomorrow.");
+        showMessage("❌ Daily bonus already claimed!");
         return;
     }
     
     showCaptcha(async (captchaSuccess) => {
         if (!captchaSuccess) {
-            showMessage("❌ Verification failed. Please try again.");
+            showMessage("❌ Verification failed");
             return;
         }
         
         showRewardAdWithInterstitial(async () => {
             userData.total_coins += DAILY_BONUS;
             userData.last_daily_bonus = new Date().toISOString();
-            
             await updateUserInDB();
             updateUI();
             updateDailyBonusUI();
-            showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus! Total: ${userData.total_coins}`);
+            showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus!`);
         });
+    });
+}
+
+function claimHourlyBonusWithCaptcha() {
+    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
+        showMessage(`❌ Need ${HOURLY_BONUS_REQUIREMENT} ads this hour!`);
+        return;
+    }
+    
+    showCaptcha((success) => {
+        if (success) {
+            showRewardAdWithInterstitial(() => {
+                userData.total_coins += HOURLY_BONUS_REWARD;
+                userData.hourly_bonus_ads = 0;
+                userData.hourly_bonus_claim_time = new Date().toISOString();
+                updateUserInDB();
+                updateUI();
+                updateHourlyBonusUI();
+                showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus!`);
+            });
+        }
+    });
+}
+
+function claimDailyChallengeWithCaptcha() {
+    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
+        showMessage(`❌ Need ${DAILY_CHALLENGE_REQUIREMENT} ads today!`);
+        return;
+    }
+    
+    showCaptcha((success) => {
+        if (success) {
+            showRewardAdWithInterstitial(() => {
+                userData.total_coins += DAILY_CHALLENGE_REWARD;
+                userData.daily_challenge_ads = 0;
+                userData.daily_challenge_claim_time = new Date().toISOString();
+                updateUserInDB();
+                updateUI();
+                updateDailyChallengeUI();
+                showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge!`);
+            });
+        }
     });
 }
 
@@ -889,19 +851,13 @@ function claimDailyBonusWithAds() {
 function showFaucetPayModal() {
     const minAmount = 5000;
     if (userData.total_coins < minAmount) {
-        showMessage(`❌ You need at least ${minAmount} coins for FaucetPay withdrawal!`);
+        showMessage(`❌ Need at least ${minAmount} coins!`);
         return;
     }
     
     showCaptcha(async (captchaSuccess) => {
-        if (!captchaSuccess) {
-            showMessage("❌ Verification failed. Please try again.");
-            return;
-        }
-        
-        showRewardAdWithInterstitial(() => {
-            showFaucetPayModalForm();
-        });
+        if (!captchaSuccess) return;
+        showRewardAdWithInterstitial(() => showFaucetPayModalForm());
     });
 }
 
@@ -910,19 +866,13 @@ function showDirectWalletModal() {
     const totalNeeded = minAmount + DIRECT_WALLET_FEE;
     
     if (userData.total_coins < totalNeeded) {
-        showMessage(`❌ You need at least ${totalNeeded.toLocaleString()} coins (${minAmount.toLocaleString()} + ${DIRECT_WALLET_FEE.toLocaleString()} fee) for Direct Wallet withdrawal!`);
+        showMessage(`❌ Need ${totalNeeded.toLocaleString()} coins (${minAmount.toLocaleString()} + ${DIRECT_WALLET_FEE.toLocaleString()} fee)!`);
         return;
     }
     
     showCaptcha(async (captchaSuccess) => {
-        if (!captchaSuccess) {
-            showMessage("❌ Verification failed. Please try again.");
-            return;
-        }
-        
-        showRewardAdWithInterstitial(() => {
-            showDirectWalletModalForm();
-        });
+        if (!captchaSuccess) return;
+        showRewardAdWithInterstitial(() => showDirectWalletModalForm());
     });
 }
 
@@ -950,18 +900,10 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
 
 async function loadReferralsFromDB() {
     try {
-        console.log("👥 Loading referrals for user:", userData.telegram_id);
-        
         const response = await fetch(`${SUPABASE_URL}/rest/v1/users?referred_by=eq.${userData.telegram_id}&select=*`, {
-            headers: { 
-                'apikey': SUPABASE_KEY, 
-                'Authorization': `Bearer ${SUPABASE_KEY}` 
-            }
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
         });
-        
         const referrals = await response.json();
-        console.log("👥 Referrals loaded:", referrals.length);
-        
         userData.referrals = referrals;
         document.getElementById("referralCount").innerText = userData.referrals.length;
         renderReferralList();
@@ -977,7 +919,6 @@ function updateTaskUI() {
         joinBtn.textContent = "✅ Completed";
         joinBtn.classList.add("completed");
         joinBtn.disabled = true;
-        joinBtn.onclick = null;
     } else {
         joinBtn.textContent = "Join & Claim";
         joinBtn.classList.remove("completed", "verifying");
@@ -988,7 +929,7 @@ function updateTaskUI() {
 
 async function checkChannelMembershipAndReward() {
     if (userData.task_join_channel) {
-        showMessage("✅ You already completed this task!");
+        showMessage("✅ Already completed!");
         return;
     }
     const joinBtn = document.getElementById("joinChannelBtn");
@@ -1008,14 +949,14 @@ async function checkChannelMembershipAndReward() {
 
 async function verifyChannelMembership() {
     if (userData.task_join_channel) {
-        showMessage("✅ Task already completed!");
+        showMessage("✅ Already completed!");
         updateTaskUI();
         return;
     }
     const joinBtn = document.getElementById("joinChannelBtn");
     joinBtn.textContent = "⏳ Checking...";
     joinBtn.disabled = true;
-    showMessage("🔍 Verifying channel membership...");
+    showMessage("🔍 Verifying...");
     try {
         const botLink = `https://t.me/${BOT_USERNAME}?start=verify_${userData.telegram_id}`;
         if (window.Telegram && Telegram.WebApp) {
@@ -1023,7 +964,7 @@ async function verifyChannelMembership() {
         } else {
             window.open(botLink, '_blank');
         }
-        showMessage("📢 Please send /verify to @Bitcashcryptofaucet_bot after joining the channel!");
+        showMessage("📢 Send /verify to the bot after joining!");
         let checkCount = 0;
         const checkInterval = setInterval(async () => {
             checkCount++;
@@ -1033,18 +974,18 @@ async function verifyChannelMembership() {
                 joinBtn.textContent = "✅ Completed";
                 joinBtn.classList.add("completed");
                 joinBtn.disabled = true;
-                showMessage("🎉 Task completed! +20 coins added!");
+                showMessage("🎉 +20 coins!");
                 updateUI();
             } else if (checkCount > 30) {
                 clearInterval(checkInterval);
                 joinBtn.textContent = "Join & Claim";
                 joinBtn.disabled = false;
                 joinBtn.onclick = () => checkChannelMembershipAndReward();
-                showMessage("⏰ Verification timed out. Please try again.");
+                showMessage("⏰ Timeout, try again.");
             }
         }, 3000);
     } catch (error) {
-        showMessage("❌ Verification failed. Please try again.");
+        showMessage("❌ Failed, try again.");
         joinBtn.textContent = "Join & Claim";
         joinBtn.disabled = false;
         joinBtn.onclick = () => checkChannelMembershipAndReward();
@@ -1060,15 +1001,6 @@ function canClaimDailyBonus() {
     return hoursDiff >= 24;
 }
 
-function getDailyBonusRemainingTime() {
-    if (!userData.last_daily_bonus) return 0;
-    const lastClaim = new Date(userData.last_daily_bonus);
-    const now = new Date();
-    const hoursPassed = (now - lastClaim) / (1000 * 60 * 60);
-    const remaining = 24 - hoursPassed;
-    return remaining > 0 ? remaining : 0;
-}
-
 function updateDailyBonusUI() {
     const btn = document.getElementById("dailyBonusBtn");
     const countdownDiv = document.getElementById("dailyCountdown");
@@ -1079,10 +1011,10 @@ function updateDailyBonusUI() {
     } else {
         btn.disabled = true;
         btn.style.opacity = "0.5";
-        const remaining = getDailyBonusRemainingTime();
+        const remaining = 24 - ((new Date() - new Date(userData.last_daily_bonus)) / (1000 * 60 * 60));
         const hours = Math.floor(remaining);
         const minutes = Math.floor((remaining - hours) * 60);
-        countdownDiv.innerHTML = `⏰ Next bonus available in: ${hours}h ${minutes}m`;
+        countdownDiv.innerHTML = `⏰ Next: ${hours}h ${minutes}m`;
     }
 }
 
@@ -1094,11 +1026,11 @@ function showFaucetPayModalForm() {
     modal.innerHTML = `
         <div class="modal-box">
             <div class="modal-title">💧 FaucetPay Withdrawal</div>
-            <div class="modal-hint">📧 Enter your FaucetPay email address (example: example@gmail.com)</div>
-            <input type="email" id="walletInput" placeholder="Your FaucetPay Email" autocomplete="off">
-            <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount} coins)</div>
-            <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins}">
-            <button class="modal-btn" id="confirmWithdraw">Confirm Withdrawal</button>
+            <div class="modal-hint">📧 Enter your FaucetPay email</div>
+            <input type="email" id="walletInput" placeholder="Your Email">
+            <div class="modal-hint">💰 Amount (Min: ${minAmount})</div>
+            <input type="number" id="amountInput" placeholder="Coins" min="${minAmount}" max="${userData.total_coins}">
+            <button class="modal-btn" id="confirmWithdraw">Confirm</button>
             <button class="modal-btn modal-btn-cancel" id="cancelModal">Cancel</button>
         </div>
     `;
@@ -1107,19 +1039,19 @@ function showFaucetPayModalForm() {
         let walletAddress = document.getElementById('walletInput').value.trim();
         let amount = parseInt(document.getElementById('amountInput').value);
         if (!walletAddress || !walletAddress.includes('@')) {
-            showMessage("❌ Please enter a valid email!");
+            showMessage("❌ Valid email required!");
             return;
         }
         if (isNaN(amount) || amount < minAmount || amount > userData.total_coins) {
-            showMessage(`❌ Invalid amount! Min ${minAmount} coins.`);
+            showMessage(`❌ Invalid amount! Min ${minAmount}`);
             return;
         }
         let success = await saveWithdrawRequest('faucetpay', amount, walletAddress);
         if (success) {
-            showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
+            showMessage("✅ Request submitted!");
             updateUI();
         } else {
-            showMessage("❌ Failed to submit withdrawal request!");
+            showMessage("❌ Failed!");
         }
         modal.remove();
     };
@@ -1134,13 +1066,13 @@ function showDirectWalletModalForm() {
     modal.className = 'modal-overlay';
     modal.innerHTML = `
         <div class="modal-box">
-            <div class="modal-title">💰 Direct Wallet Withdrawal (DOGE)</div>
-            <div class="modal-hint">🐕 Enter your DOGE wallet address</div>
-            <input type="text" id="walletInput" placeholder="Your DOGE Wallet Address" autocomplete="off">
-            <div class="modal-hint">💰 Enter amount to withdraw (Min: ${minAmount.toLocaleString()} coins)</div>
-            <div class="modal-hint" style="color:#ff9800;">⚠️ Network fee: ${fee.toLocaleString()} coins will be deducted</div>
-            <input type="number" id="amountInput" placeholder="Amount in coins" min="${minAmount}" max="${userData.total_coins - fee}">
-            <button class="modal-btn" id="confirmWithdraw">Confirm Withdrawal</button>
+            <div class="modal-title">💰 Direct Wallet (DOGE)</div>
+            <div class="modal-hint">🐕 Enter DOGE wallet address</div>
+            <input type="text" id="walletInput" placeholder="DOGE Address">
+            <div class="modal-hint">💰 Amount (Min: ${minAmount.toLocaleString()})</div>
+            <div class="modal-hint" style="color:#ff9800;">⚠️ Fee: ${fee.toLocaleString()} coins</div>
+            <input type="number" id="amountInput" placeholder="Coins" min="${minAmount}" max="${userData.total_coins - fee}">
+            <button class="modal-btn" id="confirmWithdraw">Confirm</button>
             <button class="modal-btn modal-btn-cancel" id="cancelModal">Cancel</button>
         </div>
     `;
@@ -1153,15 +1085,15 @@ function showDirectWalletModalForm() {
             return;
         }
         if (isNaN(amount) || amount < minAmount || (amount + fee) > userData.total_coins) {
-            showMessage(`❌ Invalid amount! Min ${minAmount.toLocaleString()} coins. Need ${fee.toLocaleString()} fee.`);
+            showMessage(`❌ Invalid amount! Min ${minAmount.toLocaleString()}`);
             return;
         }
         let success = await saveWithdrawRequest('direct', amount, walletAddress);
         if (success) {
-            showMessage("✅ Withdrawal request submitted! Waiting for admin approval.");
+            showMessage("✅ Request submitted!");
             updateUI();
         } else {
-            showMessage("❌ Failed to submit withdrawal request!");
+            showMessage("❌ Failed!");
         }
         modal.remove();
     };
@@ -1179,7 +1111,7 @@ function showCaptcha(callback) {
         <div class="captcha-box">
             <h3>🤖 Human Verification</h3>
             <p style="font-size: 24px; margin: 20px;">${a} + ${b} = ?</p>
-            <input type="number" id="captchaInput" placeholder="Enter answer" autofocus>
+            <input type="number" id="captchaInput" placeholder="Answer" autofocus>
             <br><br>
             <button id="captchaSubmit" style="background:linear-gradient(135deg,#6c63ff,#3f37c9);padding:12px 24px;border:none;border-radius:50px;color:white;cursor:pointer;">Verify</button>
         </div>
@@ -1193,7 +1125,7 @@ function showCaptcha(callback) {
             overlay.remove();
             callback(true);
         } else {
-            alert("❌ Wrong answer! Try again.");
+            alert("❌ Wrong answer!");
             overlay.remove();
             showCaptcha(callback);
         }
@@ -1201,28 +1133,20 @@ function showCaptcha(callback) {
     input.onkeypress = (e) => { if (e.key === 'Enter') document.getElementById('captchaSubmit').click(); };
 }
 
-// ========== REFERRAL LINK FUNCTIONS ==========
+// ========== REFERRAL LINK ==========
 function getInviteLink() {
     return `https://t.me/${BOT_USERNAME}?start=ref_${userData.telegram_id}`;
 }
 
 function copyInviteLink() {
-    let link = getInviteLink();
-    navigator.clipboard.writeText(link);
-    showMessage("✅ Invite link copied!");
+    navigator.clipboard.writeText(getInviteLink());
+    showMessage("✅ Link copied!");
 }
 
 function shareInviteLink() {
     let link = getInviteLink();
     if (navigator.share) {
-        navigator.share({
-            title: "Join my Mini App!",
-            text: "Watch ads and earn DOGE coins! Get 100 bonus coins on signup!",
-            url: link
-        }).catch((err) => {
-            console.log("Share failed:", err);
-            copyInviteLink();
-        });
+        navigator.share({ title: "Join my Mini App!", text: "Earn DOGE coins!", url: link }).catch(() => copyInviteLink());
     } else {
         copyInviteLink();
     }
@@ -1274,23 +1198,14 @@ async function renderHistory() {
 
 function renderReferralList() {
     let container = document.getElementById("referralListContainer");
-    
     if (!userData.referrals || userData.referrals.length === 0) {
-        container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No referrals yet</p>';
+        container.innerHTML = '<p style="text-align:center;opacity:0.5">No referrals yet</p>';
         return;
     }
-    
     let html = '';
-    for (let i = 0; i < userData.referrals.length; i++) {
-        let ref = userData.referrals[i];
+    for (let ref of userData.referrals) {
         let date = ref.created_at ? new Date(ref.created_at).toLocaleDateString() : 'Unknown';
-        html += `
-            <div class="referral-item">
-                <span>👤 <strong>${ref.first_name || 'User'}</strong><br>
-                <span style="font-size: 10px; opacity: 0.6;">ID: ${ref.telegram_id}</span></span>
-                <span class="badge">📅 ${date}</span>
-            </div>
-        `;
+        html += `<div class="referral-item"><span>👤 <strong>${ref.first_name || 'User'}</strong><br><span style="font-size:10px;opacity:0.6">ID: ${ref.telegram_id}</span></span><span class="badge">📅 ${date}</span></div>`;
     }
     container.innerHTML = html;
 }
@@ -1305,53 +1220,43 @@ function showMessage(msg) {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// ========== TAB NAVIGATION ==========
 function initTabs() {
     let btns = document.querySelectorAll(".tab-btn");
     let panes = document.querySelectorAll(".tab-pane");
-    
     btns.forEach(btn => {
         btn.onclick = () => {
             let id = btn.getAttribute("data-tab");
-            
             showInterstitialAd();
-            
             btns.forEach(b => b.classList.remove("active"));
             panes.forEach(p => p.classList.remove("active"));
             btn.classList.add("active");
             document.getElementById(id + "-tab").classList.add("active");
-            
             if (id === "profile") renderHistory();
             if (id === "referral") loadReferralsFromDB();
         };
     });
 }
 
-// ========== TIMER INTERVALS ==========
 function startTimers() {
     if (hourlyTimerInterval) clearInterval(hourlyTimerInterval);
     if (dailyTimerInterval) clearInterval(dailyTimerInterval);
-    
     hourlyTimerInterval = setInterval(() => updateHourlyBonusUI(), 1000);
     dailyTimerInterval = setInterval(() => updateDailyChallengeUI(), 1000);
 }
 
-// ========== ADSGRAM TASK AD EVENT HANDLER ==========
 function setupTaskAdHandler() {
     const taskAd = document.querySelector('adsgram-task');
     if (taskAd) {
         taskAd.addEventListener('taskCompleted', async (event) => {
-            console.log('Task completed:', event.detail);
             userData.total_coins += 20;
             userData.watched_count++;
             await updateUserInDB();
             updateUI();
-            showMessage("🎉 +20 Coins from task! Total: " + userData.total_coins);
+            showMessage("🎉 +20 Coins from task!");
         });
     }
 }
 
-// ========== INITIALIZATION ==========
 async function init() {
     initTabs();
     initAdsgramReward();
@@ -1378,12 +1283,11 @@ async function init() {
         userData.telegram_id = parseInt(savedId);
         userData.first_name = "Test User";
     }
+    
     await loadUserFromDB(userData.telegram_id);
     checkReferral();
     
-    setTimeout(() => {
-        showInterstitialAd();
-    }, 1000);
+    setTimeout(() => showInterstitialAd(), 1000);
     
     document.getElementById("mainWatchBtn").onclick = () => watchAdWithSequentialAds();
     document.getElementById("copyInviteBtn").onclick = () => copyInviteLink();
