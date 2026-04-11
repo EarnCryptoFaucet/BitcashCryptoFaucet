@@ -262,7 +262,7 @@ const TASK_JOIN_CHANNEL_REWARD = 20;
 const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
-const DOGE_RATE = 0.0001; // Updated: 10 coins = 0.001 DOGE (was 0.0001)
+const DOGE_RATE = 0.0001; // 10 coins = 0.0001 DOGE
 const WITHDRAW_HISTORY_DAYS = 3;
 const TAB_TIMEOUT = 30000;
 const HOURLY_BONUS_REQUIREMENT = 50;
@@ -764,32 +764,136 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
 }
 
 async function loadReferralsFromDB() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/users?referred_by=eq.${userData.telegram_id}&select=*`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-    });
-    const referrals = await response.json();
-    userData.referrals = referrals;
-    document.getElementById("referralCount").innerText = userData.referrals.length;
-    renderReferralList();
+    try {
+        console.log("Loading referrals for user:", userData.telegram_id);
+        
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users?referred_by=eq.${userData.telegram_id}&select=*`, {
+            headers: { 
+                'apikey': SUPABASE_KEY, 
+                'Authorization': `Bearer ${SUPABASE_KEY}` 
+            }
+        });
+        
+        const referrals = await response.json();
+        console.log("Referrals loaded:", referrals);
+        
+        userData.referrals = referrals;
+        document.getElementById("referralCount").innerText = userData.referrals.length;
+        renderReferralList();
+    } catch (error) {
+        console.error("Error loading referrals:", error);
+    }
 }
 
-async function saveReferral(referredUserId) {
-    await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
-        method: 'PATCH',
-        headers: { 
-            'Content-Type': 'application/json', 
-            'apikey': SUPABASE_KEY, 
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ referred_by: userData.telegram_id })
-    });
-    userData.total_coins += REFERRAL_BONUS;
-    userData.referral_coins += REFERRAL_BONUS;
-    await updateUserInDB();
-    updateUI();
-    loadReferralsFromDB();
-    showMessage(`🎉 Congratulations! +${REFERRAL_BONUS} referral bonus coins added to your account!`);
+async function saveReferral(referredUserId, referrerId) {
+    try {
+        console.log("saveReferral called - referred:", referredUserId, "referrer:", referrerId);
+        
+        const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'apikey': SUPABASE_KEY, 
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ 
+                referred_by: referrerId
+            })
+        });
+        
+        if (updateResponse.ok) {
+            console.log("User referred_by updated successfully");
+            
+            const getReferrerResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
+                headers: { 
+                    'apikey': SUPABASE_KEY, 
+                    'Authorization': `Bearer ${SUPABASE_KEY}` 
+                }
+            });
+            
+            const referrerData = await getReferrerResponse.json();
+            
+            if (referrerData && referrerData.length > 0) {
+                const newTotalCoins = (referrerData[0].total_coins || 0) + REFERRAL_BONUS;
+                const newReferralCoins = (referrerData[0].referral_coins || 0) + REFERRAL_BONUS;
+                
+                const addBonusResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'apikey': SUPABASE_KEY, 
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        total_coins: newTotalCoins,
+                        referral_coins: newReferralCoins
+                    })
+                });
+                
+                if (addBonusResponse.ok) {
+                    console.log(`Bonus added to referrer ${referrerId}: +${REFERRAL_BONUS} coins`);
+                    
+                    if (referrerId === userData.telegram_id) {
+                        userData.total_coins = newTotalCoins;
+                        userData.referral_coins = newReferralCoins;
+                        updateUI();
+                        loadReferralsFromDB();
+                        showMessage(`🎉 Congratulations! +${REFERRAL_BONUS} referral bonus coins added to your account!`);
+                    }
+                }
+            }
+        } else {
+            const errorText = await updateResponse.text();
+            console.error("Failed to update referred_by:", errorText);
+        }
+    } catch (error) {
+        console.error("Error in saveReferral:", error);
+    }
+}
+
+function checkReferral() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('start');
+    
+    console.log("Checking referral - start param:", startParam);
+    
+    if (startParam && startParam.startsWith('ref_')) {
+        const referrerId = parseInt(startParam.replace('ref_', ''));
+        const currentUserId = userData.telegram_id;
+        
+        console.log("Referrer ID:", referrerId, "Current User ID:", currentUserId);
+        
+        if (referrerId === currentUserId) {
+            console.log("Self-referral detected - ignoring");
+            return;
+        }
+        
+        fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${currentUserId}&select=referred_by`, {
+            headers: { 
+                'apikey': SUPABASE_KEY, 
+                'Authorization': `Bearer ${SUPABASE_KEY}` 
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("User data from DB:", data);
+            
+            if (data && data.length > 0 && !data[0].referred_by) {
+                console.log("Saving referral for user", currentUserId, "from", referrerId);
+                saveReferral(currentUserId, referrerId);
+            } else if (data && data.length > 0 && data[0].referred_by) {
+                console.log("User already has a referrer:", data[0].referred_by);
+            } else {
+                console.log("User not found in DB yet, will try later");
+                setTimeout(() => checkReferral(), 2000);
+            }
+        })
+        .catch(err => {
+            console.error("Error checking referral:", err);
+        });
+    }
 }
 
 // ========== TASKS FUNCTIONS ==========
@@ -1050,21 +1154,6 @@ function shareInviteLink() {
     }
 }
 
-function checkReferral() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const startParam = urlParams.get('start');
-    if (startParam && startParam.startsWith('ref_')) {
-        const referrerId = parseInt(startParam.replace('ref_', ''));
-        if (referrerId !== userData.telegram_id) {
-            fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}&select=referred_by`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            }).then(res => res.json()).then(data => {
-                if (!data[0]?.referred_by) saveReferral(userData.telegram_id);
-            });
-        }
-    }
-}
-
 // ========== UI RENDERING ==========
 function updateUI() {
     const dogeValue = (userData.total_coins / 10) * DOGE_RATE;
@@ -1111,14 +1200,23 @@ async function renderHistory() {
 
 function renderReferralList() {
     let container = document.getElementById("referralListContainer");
+    
     if (!userData.referrals || userData.referrals.length === 0) {
-        container.innerHTML = '<p style="text-align:center;opacity:0.5">No referrals yet</p>';
+        container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No referrals yet</p>';
         return;
     }
+    
     let html = '';
-    for (let ref of userData.referrals) {
+    for (let i = 0; i < userData.referrals.length; i++) {
+        let ref = userData.referrals[i];
         let date = ref.created_at ? new Date(ref.created_at).toLocaleDateString() : 'Unknown';
-        html += `<div class="referral-item"><span>👤 <strong>${ref.first_name || 'User'}</strong><br><span style="font-size:10px;opacity:0.6">ID: ${ref.telegram_id}</span></span><span class="badge">📅 ${date}</span></div>`;
+        html += `
+            <div class="referral-item">
+                <span>👤 <strong>${ref.first_name || 'User'}</strong><br>
+                <span style="font-size: 10px; opacity: 0.6;">ID: ${ref.telegram_id}</span></span>
+                <span class="badge">📅 ${date}</span>
+            </div>
+        `;
     }
     container.innerHTML = html;
 }
