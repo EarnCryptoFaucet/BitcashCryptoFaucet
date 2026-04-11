@@ -312,6 +312,10 @@ function initInterstitialAd() {
 }
 
 function showInterstitialAd() {
+    if (!window.Telegram || !Telegram.WebApp) {
+        console.log("Not in Telegram, skipping interstitial");
+        return;
+    }
     const controller = initInterstitialAd();
     if (!controller) {
         console.log("Interstitial ad not ready");
@@ -391,7 +395,7 @@ function showRewardAdWithInterstitial(onComplete) {
     showSequentialAds(onComplete);
 }
 
-// ========== REFERRAL COMMISSION FUNCTION (FIXED) ==========
+// ========== REFERRAL COMMISSION FUNCTION ==========
 async function addReferralCommission(userId) {
     try {
         const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}&select=referred_by`, {
@@ -401,7 +405,7 @@ async function addReferralCommission(userId) {
         
         if (userDataRes && userDataRes.length > 0 && userDataRes[0].referred_by) {
             const referrerId = userDataRes[0].referred_by;
-            console.log(`Adding ${REFERRAL_COMMISSION} coins to referrer ${referrerId} for user ${userId}`);
+            console.log(`Adding ${REFERRAL_COMMISSION} coins to referrer ${referrerId}`);
             
             const referrerResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -430,14 +434,14 @@ async function addReferralCommission(userId) {
                 
                 if (updateResponse.ok) {
                     console.log(`✅ Added ${REFERRAL_COMMISSION} commission to referrer ${referrerId}`);
-                    
                     if (referrerId === userData.telegram_id) {
                         userData.total_coins = newTotalCoins;
                         userData.referral_coins = newReferralCoins;
                         updateUI();
                     }
                 } else {
-                    console.error("Failed to update referrer:", await updateResponse.text());
+                    const errorText = await updateResponse.text();
+                    console.error("Failed to update referrer:", errorText);
                 }
             }
         }
@@ -848,8 +852,6 @@ async function loadReferralsFromDB() {
 
 async function saveReferral(referredUserId, referrerId) {
     try {
-        console.log("saveReferral called - referred:", referredUserId, "referrer:", referrerId);
-        
         const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
             method: 'PATCH',
             headers: { 
@@ -858,21 +860,15 @@ async function saveReferral(referredUserId, referrerId) {
                 'Authorization': `Bearer ${SUPABASE_KEY}`,
                 'Prefer': 'return=minimal'
             },
-            body: JSON.stringify({ 
-                referred_by: referrerId
-            })
+            body: JSON.stringify({ referred_by: referrerId })
         });
         
         if (updateResponse.ok) {
             console.log("User referred_by updated successfully");
             
             const getReferrerResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
-                headers: { 
-                    'apikey': SUPABASE_KEY, 
-                    'Authorization': `Bearer ${SUPABASE_KEY}` 
-                }
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
             });
-            
             const referrerData = await getReferrerResponse.json();
             
             if (referrerData && referrerData.length > 0) {
@@ -906,7 +902,8 @@ async function saveReferral(referredUserId, referrerId) {
                         showMessage(`🎉 Congratulations! +${REFERRAL_BONUS} referral bonus coins added to your account!`);
                     }
                 } else {
-                    console.error("Failed to add bonus:", await addBonusResponse.text());
+                    const errorText = await addBonusResponse.text();
+                    console.error("Failed to add bonus:", errorText);
                 }
             }
         } else {
