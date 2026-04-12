@@ -238,10 +238,9 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script>
 // ============================================
-// SUPABASE CONFIGURATION
+// API CONFIGURATION
 // ============================================
-const SUPABASE_URL = "https://yeexmptexqthwszknwuf.supabase.co";
-const SUPABASE_KEY = "sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn";
+const API_URL = "https://telegram-miniapp-api-1.onrender.com";
 
 // ========== ADSGRAM CONFIGURATION ==========
 const ADSGRAM_REWARD_BLOCK_ID = "27187";
@@ -457,107 +456,45 @@ function shareInviteLink() {
     }
 }
 
-// ================= CLAIM REWARD WITH IDEMPOTENCY =================
+// ================= CLAIM REWARD VIA API =================
 async function claimReward(userId, amount, actionId) {
     try {
-        console.log(`💰 Claiming reward: userId=${userId}, amount=${amount}, actionId=${actionId}`);
-        
-        // Step 1: Check if this action_id was already used
-        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/reward_claims?action_id=eq.${actionId}&select=id`, {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            }
-        });
-        
-        const existingClaims = await checkRes.json();
-        
-        if (existingClaims && existingClaims.length > 0) {
-            console.log("⚠️ Duplicate action detected! Reward already claimed.");
-            return { ok: false, error: "duplicate" };
-        }
-        
-        // Step 2: Get current user data from database
-        const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}&select=total_coins`, {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            }
-        });
-        
-        const userDataRes = await userRes.json();
-        
-        if (!userDataRes || userDataRes.length === 0) {
-            return { ok: false, error: "user_not_found" };
-        }
-        
-        const currentCoins = userDataRes[0].total_coins || 0;
-        const newCoins = currentCoins + amount;
-        
-        // Step 3: Update user's coins in database
-        const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-                total_coins: newCoins,
-                last_sync: new Date().toISOString()
-            })
-        });
-        
-        if (!updateRes.ok) {
-            throw new Error("Failed to update user");
-        }
-        
-        // Step 4: Record the claim (for idempotency)
-        await fetch(`${SUPABASE_URL}/rest/v1/reward_claims`, {
+        const response = await fetch(`${API_URL}/api/claim-reward`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Prefer': 'return=minimal'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                action_id: actionId,
-                user_id: userId,
-                amount: amount
+                telegram_id: userId,
+                reward: amount,
+                action_id: actionId
             })
         });
         
-        console.log(`✅ Reward claimed successfully! New coins: ${newCoins}`);
-        return { ok: true, newCoins: newCoins };
-        
+        const result = await response.json();
+        console.log("API response:", result);
+        return result;
     } catch (error) {
-        console.error("❌ Error claiming reward:", error);
-        return { ok: false, error: error.message };
+        console.error("API error:", error);
+        return { ok: false, error: "network_error" };
     }
 }
 
-// ========== LOAD USER FROM DB ==========
+// ========== LOAD USER FROM DB VIA API ==========
 async function loadUserFromDB(telegramId) {
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${telegramId}&select=*`, {
-            headers: {
-                apikey: SUPABASE_KEY,
-                Authorization: `Bearer ${SUPABASE_KEY}`
-            }
-        });
-
-        const data = await res.json();
-
-        if (data.length === 0) {
+        const response = await fetch(`${API_URL}/api/user/${telegramId}`);
+        const result = await response.json();
+        
+        if (result.ok && result.user) {
+            Object.assign(userData, result.user);
+            console.log("📥 Loaded from DB via API:", userData.total_coins, "coins");
+        } else {
             await createNewUser(telegramId);
-            return await loadUserFromDB(telegramId);
+            await loadUserFromDB(telegramId);
+            return;
         }
-
-        Object.assign(userData, data[0]);
-        console.log("📥 Loaded from DB:", userData.total_coins, "coins");
-
+        
         updateUI();
         loadReferralsFromDB();
         updateDailyBonusUI();
@@ -565,20 +502,20 @@ async function loadUserFromDB(telegramId) {
         updateTaskUI();
         updateHourlyBonusUI();
         updateDailyChallengeUI();
-
+        
     } catch (err) {
         console.error("load error:", err);
     }
 }
 
 async function createNewUser(telegramId) {
-    await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+    await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users`, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json', 
-            apikey: SUPABASE_KEY, 
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-            Prefer: 'return=minimal'
+            'apikey': 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
+            'Authorization': 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
+            'Prefer': 'return=minimal'
         },
         body: JSON.stringify({
             telegram_id: telegramId,
@@ -601,30 +538,30 @@ async function saveReferral(referredUserId, referrerId) {
     try {
         if (referredUserId === referrerId) return;
 
-        const check = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}&select=referred_by`, {
+        const check = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referredUserId}&select=referred_by`, {
             headers: {
-                apikey: SUPABASE_KEY,
-                Authorization: `Bearer ${SUPABASE_KEY}`
+                apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
+                Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn'
             }
         });
 
         const checkData = await check.json();
         if (checkData[0]?.referred_by) return;
 
-        await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referredUserId}`, {
+        await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referredUserId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                apikey: SUPABASE_KEY,
-                Authorization: `Bearer ${SUPABASE_KEY}`
+                apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
+                Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn'
             },
             body: JSON.stringify({ referred_by: referrerId })
         });
 
-        const refRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
+        const refRes = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referrerId}`, {
             headers: {
-                apikey: SUPABASE_KEY,
-                Authorization: `Bearer ${SUPABASE_KEY}`
+                apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
+                Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn'
             }
         });
 
@@ -633,12 +570,12 @@ async function saveReferral(referredUserId, referrerId) {
 
         const refUser = refData[0];
 
-        await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${referrerId}`, {
+        await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referrerId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                apikey: SUPABASE_KEY,
-                Authorization: `Bearer ${SUPABASE_KEY}`
+                apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
+                Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn'
             },
             body: JSON.stringify({
                 total_coins: (refUser.total_coins || 0) + REFERRAL_BONUS,
@@ -668,8 +605,8 @@ function checkReferral() {
         const currentUserId = userData.telegram_id;
         
         if (referrerId !== currentUserId) {
-            fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${currentUserId}&select=referred_by`, {
-                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+            fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${currentUserId}&select=referred_by`, {
+                headers: { apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn' }
             })
             .then(res => res.json())
             .then(data => {
@@ -685,8 +622,8 @@ function checkReferral() {
 // ========== LOAD REFERRALS ==========
 async function loadReferralsFromDB() {
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/users?referred_by=eq.${userData.telegram_id}&select=*`, {
-            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+        const response = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?referred_by=eq.${userData.telegram_id}&select=*`, {
+            headers: { apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn' }
         });
         const referrals = await response.json();
         userData.referrals = referrals;
@@ -713,12 +650,12 @@ function renderReferralList() {
 
 // ========== WITHDRAW FUNCTIONS ==========
 async function saveWithdrawRequest(type, amount, walletAddress) {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests`, {
+    const response = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/withdraw_requests`, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json', 
-            apikey: SUPABASE_KEY, 
-            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
+            Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
             Prefer: 'return=minimal'
         },
         body: JSON.stringify({
@@ -737,8 +674,8 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
 async function renderHistory() {
     let container = document.getElementById("historyContainer");
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/withdraw_requests?user_id=eq.${userData.telegram_id}&order=created_at.desc`, {
-            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+        const response = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/withdraw_requests?user_id=eq.${userData.telegram_id}&order=created_at.desc`, {
+            headers: { apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn' }
         });
         const withdrawals = await response.json();
         if (!withdrawals || withdrawals.length === 0) {
