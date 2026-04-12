@@ -293,6 +293,7 @@ let adsgramController = null;
 let interstitialController = null;
 let hourlyTimerInterval = null;
 let dailyTimerInterval = null;
+let isUpdating = false;
 
 // ========== HELPER FUNCTIONS ==========
 function showMessage(msg) {
@@ -456,47 +457,88 @@ function shareInviteLink() {
     }
 }
 
-// ================= FIXED UPDATE WITH RETRY =================
-async function updateUserInDB(retry = 2) {
+// ================= CLAIM REWARD WITH IDEMPOTENCY =================
+async function claimReward(userId, amount, actionId) {
     try {
-        const payload = {
-            total_coins: userData.total_coins,
-            watched_count: userData.watched_count,
-            referral_coins: userData.referral_coins,
-            last_daily_bonus: userData.last_daily_bonus,
-            task_join_channel: userData.task_join_channel,
-            hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
-            hourly_bonus_ads: userData.hourly_bonus_ads,
-            daily_challenge_claim_time: userData.daily_challenge_claim_time,
-            daily_challenge_ads: userData.daily_challenge_ads
-        };
-
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userData.telegram_id}`, {
+        console.log(`💰 Claiming reward: userId=${userId}, amount=${amount}, actionId=${actionId}`);
+        
+        // Step 1: Check if this action_id was already used
+        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/reward_claims?action_id=eq.${actionId}&select=id`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        const existingClaims = await checkRes.json();
+        
+        if (existingClaims && existingClaims.length > 0) {
+            console.log("⚠️ Duplicate action detected! Reward already claimed.");
+            return { ok: false, error: "duplicate" };
+        }
+        
+        // Step 2: Get current user data from database
+        const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}&select=total_coins`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        const userDataRes = await userRes.json();
+        
+        if (!userDataRes || userDataRes.length === 0) {
+            return { ok: false, error: "user_not_found" };
+        }
+        
+        const currentCoins = userDataRes[0].total_coins || 0;
+        const newCoins = currentCoins + amount;
+        
+        // Step 3: Update user's coins in database
+        const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${userId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                apikey: SUPABASE_KEY,
-                Authorization: `Bearer ${SUPABASE_KEY}`,
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
                 'Prefer': 'return=minimal'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                total_coins: newCoins,
+                last_sync: new Date().toISOString()
+            })
         });
-
-        if (!res.ok) throw new Error("Save failed");
-        console.log("✅ Saved to DB:", userData.total_coins);
-        return true;
-
-    } catch (err) {
-        if (retry > 0) {
-            console.log("🔄 Retrying save...", retry);
-            return await updateUserInDB(retry - 1);
+        
+        if (!updateRes.ok) {
+            throw new Error("Failed to update user");
         }
-        console.error("❌ Save failed:", err);
-        return false;
+        
+        // Step 4: Record the claim (for idempotency)
+        await fetch(`${SUPABASE_URL}/rest/v1/reward_claims`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                action_id: actionId,
+                user_id: userId,
+                amount: amount
+            })
+        });
+        
+        console.log(`✅ Reward claimed successfully! New coins: ${newCoins}`);
+        return { ok: true, newCoins: newCoins };
+        
+    } catch (error) {
+        console.error("❌ Error claiming reward:", error);
+        return { ok: false, error: error.message };
     }
 }
 
-// ================= FIXED LOAD =================
+// ========== LOAD USER FROM DB ==========
 async function loadUserFromDB(telegramId) {
     try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/users?telegram_id=eq.${telegramId}&select=*`, {
@@ -513,8 +555,7 @@ async function loadUserFromDB(telegramId) {
             return await loadUserFromDB(telegramId);
         }
 
-        // ✅ جلوگیری از overwrite صفر
-        userData = { ...userData, ...data[0] };
+        Object.assign(userData, data[0]);
         console.log("📥 Loaded from DB:", userData.total_coins, "coins");
 
         updateUI();
@@ -524,11 +565,6 @@ async function loadUserFromDB(telegramId) {
         updateTaskUI();
         updateHourlyBonusUI();
         updateDailyChallengeUI();
-
-        // sync بعدی
-        setTimeout(async () => {
-            await updateUserInDB();
-        }, 1000);
 
     } catch (err) {
         console.error("load error:", err);
@@ -560,7 +596,7 @@ async function createNewUser(telegramId) {
     });
 }
 
-// ================= FIX REFERRAL =================
+// ========== REFERRAL ==========
 async function saveReferral(referredUserId, referrerId) {
     try {
         if (referredUserId === referrerId) return;
@@ -960,7 +996,6 @@ function updateHourlyBonusUI() {
     if (lastClaim === 0 || timeSince >= hourMs) {
         userData.hourly_bonus_ads = 0;
         userData.hourly_bonus_claim_time = new Date().toISOString();
-        updateUserInDB();
         progressSpan.innerText = 0;
         countdownDiv.innerHTML = "✨ New hour! Watch 50 ads to claim 500 coins! ✨";
         btn.disabled = false;
@@ -992,7 +1027,6 @@ function updateDailyChallengeUI() {
     if (lastClaim === 0 || timeSince >= dayMs) {
         userData.daily_challenge_ads = 0;
         userData.daily_challenge_claim_time = new Date().toISOString();
-        updateUserInDB();
         progressSpan.innerText = 0;
         countdownDiv.innerHTML = "✨ New day! Watch 200 ads to claim 1000 coins! ✨";
         btn.disabled = false;
@@ -1027,56 +1061,39 @@ function incrementAdCounters() {
         userData.daily_challenge_claim_time = nowISO;
     }
     
-    updateUserInDB();
     updateHourlyBonusUI();
     updateDailyChallengeUI();
 }
 
-// ================= FIXED HOURLY CLAIM =================
-async function claimHourlyBonusWithCaptcha() {
-    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
-        showMessage(`❌ Need ${HOURLY_BONUS_REQUIREMENT} ads this hour!`);
-        return;
-    }
+// ================= WATCH AD (WITH CLAIM REWARD) =================
+async function watchAdWithSequentialAds() {
+    showCaptcha(async (success) => {
+        if (!success) {
+            showMessage("❌ Verification failed");
+            return;
+        }
 
-    showCaptcha((success) => {
-        if (success) {
-            showRewardAdWithInterstitial(async () => {
-                userData.total_coins += HOURLY_BONUS_REWARD;
-                userData.hourly_bonus_ads = 0;
-                userData.hourly_bonus_claim_time = new Date().toISOString();
-                await updateUserInDB();
+        showRewardAdWithInterstitial(async () => {
+            const actionId = crypto.randomUUID();
+            const result = await claimReward(userData.telegram_id, PER_AD, actionId);
+            
+            if (result.ok) {
+                userData.watched_count++;
+                await loadUserFromDB(userData.telegram_id);
                 updateUI();
                 updateHourlyBonusUI();
-                showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus!`);
-            });
-        }
-    });
-}
-
-// ================= FIXED DAILY CHALLENGE CLAIM =================
-async function claimDailyChallengeWithCaptcha() {
-    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
-        showMessage(`❌ Need ${DAILY_CHALLENGE_REQUIREMENT} ads today!`);
-        return;
-    }
-
-    showCaptcha((success) => {
-        if (success) {
-            showRewardAdWithInterstitial(async () => {
-                userData.total_coins += DAILY_CHALLENGE_REWARD;
-                userData.daily_challenge_ads = 0;
-                userData.daily_challenge_claim_time = new Date().toISOString();
-                await updateUserInDB();
-                updateUI();
                 updateDailyChallengeUI();
-                showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge!`);
-            });
-        }
+                showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
+            } else if (result.error === "duplicate") {
+                showMessage("⚠️ Already claimed! Please wait.");
+            } else {
+                showMessage("❌ Failed to claim reward!");
+            }
+        });
     });
 }
 
-// ================= FIXED DAILY BONUS CLAIM =================
+// ================= DAILY BONUS (WITH CLAIM REWARD) =================
 async function claimDailyBonusWithAds() {
     if (!canClaimDailyBonus()) {
         showMessage("❌ Already claimed! Come back tomorrow.");
@@ -1087,34 +1104,81 @@ async function claimDailyBonusWithAds() {
         if (!success) return;
 
         showRewardAdWithInterstitial(async () => {
-            userData.total_coins += DAILY_BONUS;
-            userData.last_daily_bonus = new Date().toISOString();
-            await updateUserInDB();
-            updateUI();
-            updateDailyBonusUI();
-            showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus!`);
+            const actionId = crypto.randomUUID();
+            const result = await claimReward(userData.telegram_id, DAILY_BONUS, actionId);
+            
+            if (result.ok) {
+                userData.last_daily_bonus = new Date().toISOString();
+                await loadUserFromDB(userData.telegram_id);
+                updateUI();
+                updateDailyBonusUI();
+                showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus!`);
+            } else if (result.error === "duplicate") {
+                showMessage("⚠️ Already claimed!");
+            } else {
+                showMessage("❌ Failed to claim daily bonus!");
+            }
         });
     });
 }
 
-// ================= FIXED WATCH AD =================
-async function watchAdWithSequentialAds() {
-    showCaptcha(async (success) => {
-        if (!success) {
-            showMessage("❌ Verification failed");
-            return;
-        }
+// ================= HOURLY BONUS (WITH CLAIM REWARD) =================
+async function claimHourlyBonusWithCaptcha() {
+    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
+        showMessage(`❌ Need ${HOURLY_BONUS_REQUIREMENT} ads this hour!`);
+        return;
+    }
 
-        showRewardAdWithInterstitial(async () => {
-            userData.total_coins += PER_AD;
-            userData.watched_count++;
-            incrementAdCounters();
-            await updateUserInDB();
-            updateUI();
-            updateHourlyBonusUI();
-            updateDailyChallengeUI();
-            showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
-        });
+    showCaptcha((success) => {
+        if (success) {
+            showRewardAdWithInterstitial(async () => {
+                const actionId = crypto.randomUUID();
+                const result = await claimReward(userData.telegram_id, HOURLY_BONUS_REWARD, actionId);
+                
+                if (result.ok) {
+                    userData.hourly_bonus_ads = 0;
+                    userData.hourly_bonus_claim_time = new Date().toISOString();
+                    await loadUserFromDB(userData.telegram_id);
+                    updateUI();
+                    updateHourlyBonusUI();
+                    showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus!`);
+                } else if (result.error === "duplicate") {
+                    showMessage("⚠️ Already claimed!");
+                } else {
+                    showMessage("❌ Failed to claim hourly bonus!");
+                }
+            });
+        }
+    });
+}
+
+// ================= DAILY CHALLENGE (WITH CLAIM REWARD) =================
+async function claimDailyChallengeWithCaptcha() {
+    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
+        showMessage(`❌ Need ${DAILY_CHALLENGE_REQUIREMENT} ads today!`);
+        return;
+    }
+
+    showCaptcha((success) => {
+        if (success) {
+            showRewardAdWithInterstitial(async () => {
+                const actionId = crypto.randomUUID();
+                const result = await claimReward(userData.telegram_id, DAILY_CHALLENGE_REWARD, actionId);
+                
+                if (result.ok) {
+                    userData.daily_challenge_ads = 0;
+                    userData.daily_challenge_claim_time = new Date().toISOString();
+                    await loadUserFromDB(userData.telegram_id);
+                    updateUI();
+                    updateDailyChallengeUI();
+                    showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge!`);
+                } else if (result.error === "duplicate") {
+                    showMessage("⚠️ Already claimed!");
+                } else {
+                    showMessage("❌ Failed to claim daily challenge!");
+                }
+            });
+        }
     });
 }
 
@@ -1147,20 +1211,36 @@ function setupTaskAdHandler() {
     const taskAd = document.querySelector('adsgram-task');
     if (taskAd) {
         taskAd.addEventListener('taskCompleted', async (event) => {
-            userData.total_coins += 20;
-            userData.watched_count++;
-            await updateUserInDB();
-            updateUI();
-            showMessage("🎉 +20 Coins from task!");
+            const actionId = crypto.randomUUID();
+            const result = await claimReward(userData.telegram_id, 20, actionId);
+            
+            if (result.ok) {
+                userData.watched_count++;
+                await loadUserFromDB(userData.telegram_id);
+                updateUI();
+                showMessage("🎉 +20 Coins from task!");
+            } else if (result.error === "duplicate") {
+                showMessage("⚠️ Already claimed!");
+            } else {
+                showMessage("❌ Failed to claim task reward!");
+            }
         });
     }
 }
 
-// ================= AUTO SYNC =================
+// ================= AUTO SYNC (WITH LOCK) =================
 setInterval(async () => {
-    if (!userData.telegram_id) return;
-    await loadUserFromDB(userData.telegram_id);
-}, 15000);
+    if (!userData.telegram_id || isUpdating) return;
+
+    isUpdating = true;
+
+    try {
+        await loadUserFromDB(userData.telegram_id);
+    } finally {
+        isUpdating = false;
+    }
+
+}, 30000);
 
 // ========== INITIALIZATION ==========
 async function init() {
