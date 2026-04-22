@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Telegram Mini App - Watch & Earn</title>
 <style>
+/* ========== YOUR EXISTING STYLES (KEEP AS IS) ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui;background:linear-gradient(145deg,#1a1e2b,#0f121c);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center}
 .app-container{max-width:500px;width:100%;background:rgba(18,22,35,0.7);backdrop-filter:blur(10px);border-radius:32px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -261,7 +262,7 @@ const TASK_JOIN_CHANNEL_REWARD = 20;
 const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
-const DOGE_RATE = 0.0001;
+const DOGE_RATE = 0.00015;
 const WITHDRAW_HISTORY_DAYS = 3;
 const TAB_TIMEOUT = 30000;
 const HOURLY_BONUS_REQUIREMENT = 50;
@@ -317,6 +318,8 @@ function updateUI() {
     document.getElementById("userName").innerText = userData.first_name;
     document.getElementById("userId").innerText = userData.telegram_id;
     document.getElementById("dogeValue").innerText = dogeValue.toFixed(8);
+    document.getElementById("hourlyAdCount").innerText = userData.hourly_bonus_ads || 0;
+    document.getElementById("dailyChallengeAdCount").innerText = userData.daily_challenge_ads || 0;
 }
 
 function getCurrentHourStart() {
@@ -476,26 +479,46 @@ async function claimReward(userId, amount, actionId) {
     try {
         const response = await fetch(`${API_URL}/api/claim-reward`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                telegram_id: userId,
-                reward: amount,
-                action_id: actionId
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegram_id: userId, reward: amount, action_id: actionId })
         });
-        
-        const result = await response.json();
-        console.log("API response:", result);
-        return result;
+        return await response.json();
     } catch (error) {
         console.error("API error:", error);
         return { ok: false, error: "network_error" };
     }
 }
 
-// ========== LOAD USER FROM DB VIA API ==========
+// ========== UPDATE USER IN DB ==========
+async function updateUserInDB() {
+    try {
+        const response = await fetch(`${API_URL}/api/user/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: userData.telegram_id,
+                total_coins: userData.total_coins,
+                watched_count: userData.watched_count,
+                referral_coins: userData.referral_coins,
+                last_daily_bonus: userData.last_daily_bonus,
+                task_join_channel: userData.task_join_channel,
+                hourly_bonus_ads: userData.hourly_bonus_ads,
+                hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
+                hourly_bonus_last_claim_time: userData.hourly_bonus_last_claim_time,
+                daily_challenge_ads: userData.daily_challenge_ads,
+                daily_challenge_claim_time: userData.daily_challenge_claim_time,
+                daily_challenge_last_claim_time: userData.daily_challenge_last_claim_time
+            })
+        });
+        if (response.ok) {
+            console.log("✅ User data saved to DB");
+        }
+    } catch (error) {
+        console.error("Error updating user:", error);
+    }
+}
+
+// ========== LOAD USER FROM DB ==========
 async function loadUserFromDB(telegramId) {
     try {
         const response = await fetch(`${API_URL}/api/user/${telegramId}`);
@@ -551,44 +574,13 @@ async function createNewUser(telegramId) {
     });
 }
 
-async function updateUserInDB() {
-    try {
-        const response = await fetch(`${API_URL}/api/user/update`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegram_id: userData.telegram_id,
-                total_coins: userData.total_coins,
-                watched_count: userData.watched_count,
-                referral_coins: userData.referral_coins,
-                last_daily_bonus: userData.last_daily_bonus,
-                task_join_channel: userData.task_join_channel,
-                hourly_bonus_ads: userData.hourly_bonus_ads,
-                hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
-                hourly_bonus_last_claim_time: userData.hourly_bonus_last_claim_time,
-                daily_challenge_ads: userData.daily_challenge_ads,
-                daily_challenge_claim_time: userData.daily_challenge_claim_time,
-                daily_challenge_last_claim_time: userData.daily_challenge_last_claim_time
-            })
-        });
-        if (response.ok) {
-            console.log("✅ User data saved to DB");
-        }
-    } catch (error) {
-        console.error("Error updating user:", error);
-    }
-}
-
 // ========== REFERRAL ==========
 async function saveReferral(referredUserId, referrerId) {
     try {
         if (referredUserId === referrerId) return;
 
         const check = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referredUserId}&select=referred_by`, {
-            headers: {
-                apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
-                Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn'
-            }
+            headers: { apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn' }
         });
 
         const checkData = await check.json();
@@ -604,11 +596,8 @@ async function saveReferral(referredUserId, referrerId) {
             body: JSON.stringify({ referred_by: referrerId })
         });
 
-        const refRes = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referrerId}`, {
-            headers: {
-                apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
-                Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn'
-            }
+        const refRes = await fetch(`https://yeexmptexqthwszknwuf.supabase.co/rest/v1/users?telegram_id=eq.${referrerId}&select=total_coins,referral_coins`, {
+            headers: { apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn' }
         });
 
         const refData = await refRes.json();
@@ -700,7 +689,7 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json', 
-            'apikey': 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
+            apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
             Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
             Prefer: 'return=minimal'
         },
@@ -970,7 +959,7 @@ function updateDailyBonusUI() {
     }
 }
 
-// ========== HOURLY BONUS (TIMER RESETS EVERY HOUR, INDEPENDENT OF CLAIM) ==========
+// ========== HOURLY BONUS ==========
 function updateHourlyBonusUI() {
     const btn = document.getElementById("hourlyBonusBtn");
     const countdownDiv = document.getElementById("hourlyCountdown");
@@ -987,7 +976,6 @@ function updateHourlyBonusUI() {
     const seconds = Math.floor((remainingMs % 60000) / 1000);
     countdownDiv.innerHTML = `⏰ Time remaining in this hour: ${minutes}m ${seconds}s`;
     
-    // Check if user already claimed this hour
     let hasClaimedThisHour = false;
     if (userData.hourly_bonus_last_claim_time) {
         const lastClaimTime = new Date(userData.hourly_bonus_last_claim_time).getTime();
@@ -1005,7 +993,7 @@ function updateHourlyBonusUI() {
     }
 }
 
-// ========== DAILY CHALLENGE (TIMER RESETS EVERY 24 HOURS, INDEPENDENT OF CLAIM) ==========
+// ========== DAILY CHALLENGE ==========
 function updateDailyChallengeUI() {
     const btn = document.getElementById("dailyChallengeBtn");
     const countdownDiv = document.getElementById("dailyChallengeCountdown");
@@ -1022,7 +1010,6 @@ function updateDailyChallengeUI() {
     const minutes = Math.floor((remainingMs % 3600000) / 60000);
     countdownDiv.innerHTML = `⏰ Time remaining today: ${hours}h ${minutes}m`;
     
-    // Check if user already claimed today
     let hasClaimedToday = false;
     if (userData.daily_challenge_last_claim_time) {
         const lastClaimTime = new Date(userData.daily_challenge_last_claim_time).getTime();
@@ -1046,7 +1033,7 @@ async function incrementAdCounters() {
     const currentHourStart = getCurrentHourStart();
     const currentDayStart = getCurrentDayStart();
     
-    // Hourly counter - reset if new hour
+    // Hourly counter
     let lastHourlyReset = userData.hourly_bonus_claim_time;
     if (!lastHourlyReset || new Date(lastHourlyReset).getTime() < currentHourStart) {
         userData.hourly_bonus_ads = 1;
@@ -1055,7 +1042,7 @@ async function incrementAdCounters() {
         userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
     }
     
-    // Daily challenge counter - reset if new day
+    // Daily challenge counter
     let lastDailyReset = userData.daily_challenge_claim_time;
     if (!lastDailyReset || new Date(lastDailyReset).getTime() < currentDayStart) {
         userData.daily_challenge_ads = 1;
