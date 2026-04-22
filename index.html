@@ -89,11 +89,11 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
       <div class="card" style="text-align: center;">
         <span style="font-size: 64px;">🎬</span>
         <h2 style="margin: 10px 0;">Watch & Earn Coins!</h2>
-        <p style="margin: 10px 0; opacity: 0.8;">🔥 Each ad = <strong style="color: #ffd700;"><span id="perAdValue">10</span> Coins</strong> 🔥</p>
+        <p style="margin: 10px 0; opacity: 0.8;">🔥 Each ad = <strong style="color: #ffd700;">10 Coins</strong> 🔥</p>
         <p style="font-size: 13px; opacity: 0.7;">💰 Watch more, earn more! No limits!</p>
         
         <div class="coin-rate">
-          💱 <strong>10 Coins = <span id="dogeRateDisplay">0.0001</span> DOGE</strong> 💱
+          💱 <strong>10 Coins = 0.0001 DOGE</strong> 💱
         </div>
         
         <div style="margin: 20px 0;">
@@ -104,7 +104,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
           </div>
         </div>
         <button class="watch-btn" id="mainWatchBtn">
-          📺 WATCH AD +<span id="watchAdReward">10</span> 🪙
+          📺 WATCH AD +10 🪙
         </button>
         <p style="font-size: 12px; margin-top: 20px; opacity: 0.6;">
           ✨ Human verification required for each ad ✨
@@ -114,29 +114,29 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
       <div class="card bonus-card">
         <span style="font-size: 40px;">⏰</span>
         <h3>Hourly Bonus</h3>
-        <p>Watch <strong id="hourlyRequirement">50</strong> ads in <strong>1 hour</strong> and earn <strong id="hourlyReward">500</strong> Coins!</p>
+        <p>Watch <strong>50 ads</strong> in <strong>1 hour</strong> and earn <strong>500 Coins</strong>!</p>
         <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#ff9800,#f57c00);">
-          🎯 Your progress: <span id="hourlyAdCount">0</span> / <span id="hourlyRequirement2">50</span> ads this hour
+          🎯 Your progress: <span id="hourlyAdCount">0</span> / 50 ads this hour
         </div>
         <button class="watch-btn" id="hourlyBonusBtn" style="background: linear-gradient(135deg,#ff9800,#f57c00);">
-          🎁 CLAIM HOURLY BONUS (<span id="hourlyReward2">500</span> COINS) 🎁
+          🎁 CLAIM HOURLY BONUS (500 COINS) 🎁
         </button>
         <div id="hourlyCountdown" class="bonus-countdown"></div>
-        <div class="bonus-requirement">⏰ Timer resets every hour | Need <span id="hourlyRequirement3">50</span> ads watched</div>
+        <div class="bonus-requirement">⏰ Timer resets every hour | Can claim once per hour</div>
       </div>
       
       <div class="card bonus-card">
         <span style="font-size: 40px;">📅</span>
         <h3>Daily Challenge</h3>
-        <p>Watch <strong id="dailyReq">200</strong> ads in <strong>24 hours</strong> and earn <strong id="dailyReward">1000</strong> Coins!</p>
+        <p>Watch <strong>200 ads</strong> in <strong>24 hours</strong> and earn <strong>1000 Coins</strong>!</p>
         <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#2196f3,#1976d2);">
-          🎯 Your progress: <span id="dailyChallengeAdCount">0</span> / <span id="dailyReq2">200</span> ads today
+          🎯 Your progress: <span id="dailyChallengeAdCount">0</span> / 200 ads today
         </div>
         <button class="watch-btn" id="dailyChallengeBtn" style="background: linear-gradient(135deg,#2196f3,#1976d2);">
-          🎁 CLAIM DAILY CHALLENGE (<span id="dailyReward2">1000</span> COINS) 🎁
+          🎁 CLAIM DAILY CHALLENGE (1000 COINS) 🎁
         </button>
         <div id="dailyChallengeCountdown" class="bonus-countdown"></div>
-        <div class="bonus-requirement">📅 Timer resets every 24 hours | Need <span id="dailyReq3">200</span> ads watched</div>
+        <div class="bonus-requirement">📅 Timer resets every 24 hours | Can claim once per day</div>
       </div>
       
       <div class="tasks-section">
@@ -161,7 +161,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
     <div class="tab-pane" id="referral-tab">
       <div class="card">
         <h3 style="margin-bottom: 10px;">👥 Invite Friends</h3>
-        <p style="opacity: 0.8;">Get <strong id="referralBonus">100</strong> bonus coins per referral!</p>
+        <p style="opacity: 0.8;">Get <strong>100 bonus coins</strong> per referral!</p>
         <div class="coin-badge" style="margin: 15px 0;">
           🏆 Referral Coins: <span id="refCoinsEarned">0</span>
         </div>
@@ -206,13 +206,13 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         
         <div class="withdraw-option" id="faucetpayOption" data-type="faucetpay" data-min="5000">
           <h4>💧 FaucetPay Wallet</h4>
-          <p style="font-size: 12px; opacity: 0.7;">Min: <strong id="faucetMin">5,000</strong> coins | Processing: 24 hours</p>
+          <p style="font-size: 12px; opacity: 0.7;">Min: <strong>5,000 coins</strong> | Processing: 24 hours</p>
         </div>
         
         <div class="withdraw-option" id="directOption" data-type="direct" data-min="100000">
           <h4>💰 Direct Wallet (DOGE)</h4>
-          <p style="font-size: 12px; opacity: 0.7;">Min: <strong id="directMin">100,000</strong> coins | Network fee: <strong id="directFee">35,000</strong> coins</p>
-          <p style="font-size: 11px; color: #ff9800;">⚠️ Total deducted: amount + <span id="directFee2">35,000</span> coins network fee</p>
+          <p style="font-size: 12px; opacity: 0.7;">Min: <strong>100,000 coins</strong> | Network fee: <strong>35,000 coins</strong></p>
+          <p style="font-size: 11px; color: #ff9800;">⚠️ Total deducted: amount + 35,000 coins network fee</p>
         </div>
         
         <hr>
@@ -257,22 +257,20 @@ const CHANNEL_USERNAME = "bitcashcryptofaucet";
 const CHANNEL_LINK = "https://t.me/bitcashcryptofaucet";
 const TASK_JOIN_CHANNEL_REWARD = 20;
 
-// ========== CONSTANTS (EDIT THESE VALUES) ==========
-const PER_AD = 10;                    // ← هر تبلیغ چند سکه بدهد
-const DAILY_BONUS = 20;               // ← بونوس روزانه چند سکه
-const REFERRAL_BONUS = 100;           // ← ریفرال چند سکه بدهد
-const DOGE_RATE = 0.00015;             // ← هر 10 سکه معادل چند DOGE
-const HOURLY_BONUS_REQUIREMENT = 50;  // ← نیاز بونوس ساعتی (تعداد اد)
-const HOURLY_BONUS_REWARD = 500;      // ← بونوس ساعتی چند سکه
-const DAILY_CHALLENGE_REQUIREMENT = 200; // ← نیاز چالش روزانه (تعداد اد)
-const DAILY_CHALLENGE_REWARD = 1000;  // ← چالش روزانه چند سکه
-const DIRECT_WALLET_MIN = 100000;     // ← حداقل برداشت کیف پول مستقیم
-const DIRECT_WALLET_FEE = 35000;      // ← کارمزد کیف پول مستقیم
-const FAUCETPAY_MIN = 5000;           // ← حداقل برداشت FaucetPay
-// ============================================
-
+// ========== CONSTANTS ==========
+const PER_AD = 10;
+const DAILY_BONUS = 20;
+const REFERRAL_BONUS = 100;
+const DOGE_RATE = 0.0001;
 const WITHDRAW_HISTORY_DAYS = 3;
 const TAB_TIMEOUT = 30000;
+const HOURLY_BONUS_REQUIREMENT = 50;
+const HOURLY_BONUS_REWARD = 500;
+const DAILY_CHALLENGE_REQUIREMENT = 200;
+const DAILY_CHALLENGE_REWARD = 1000;
+const DIRECT_WALLET_MIN = 100000;
+const DIRECT_WALLET_FEE = 35000;
+const FAUCETPAY_MIN = 5000;
 
 // ========== USER DATA ==========
 let userData = {
@@ -285,10 +283,12 @@ let userData = {
   referrals: [],
   last_daily_bonus: null,
   task_join_channel: false,
-  hourly_bonus_claim_time: null,
   hourly_bonus_ads: 0,
+  hourly_bonus_claim_time: null,
+  hourly_bonus_last_claim_time: null,
+  daily_challenge_ads: 0,
   daily_challenge_claim_time: null,
-  daily_challenge_ads: 0
+  daily_challenge_last_claim_time: null
 };
 
 let adsgramController = null;
@@ -296,37 +296,6 @@ let interstitialController = null;
 let hourlyTimerInterval = null;
 let dailyTimerInterval = null;
 let isUpdating = false;
-
-// ========== UPDATE UI WITH CONSTANTS ==========
-function updateConstantsDisplay() {
-    // Home page
-    document.getElementById("perAdValue").innerText = PER_AD;
-    document.getElementById("watchAdReward").innerText = PER_AD;
-    document.getElementById("dogeRateDisplay").innerText = DOGE_RATE;
-    
-    // Hourly bonus
-    document.getElementById("hourlyRequirement").innerText = HOURLY_BONUS_REQUIREMENT;
-    document.getElementById("hourlyRequirement2").innerText = HOURLY_BONUS_REQUIREMENT;
-    document.getElementById("hourlyRequirement3").innerText = HOURLY_BONUS_REQUIREMENT;
-    document.getElementById("hourlyReward").innerText = HOURLY_BONUS_REWARD;
-    document.getElementById("hourlyReward2").innerText = HOURLY_BONUS_REWARD;
-    
-    // Daily challenge
-    document.getElementById("dailyReq").innerText = DAILY_CHALLENGE_REQUIREMENT;
-    document.getElementById("dailyReq2").innerText = DAILY_CHALLENGE_REQUIREMENT;
-    document.getElementById("dailyReq3").innerText = DAILY_CHALLENGE_REQUIREMENT;
-    document.getElementById("dailyReward").innerText = DAILY_CHALLENGE_REWARD;
-    document.getElementById("dailyReward2").innerText = DAILY_CHALLENGE_REWARD;
-    
-    // Referral
-    document.getElementById("referralBonus").innerText = REFERRAL_BONUS;
-    
-    // Withdraw options
-    document.getElementById("faucetMin").innerText = FAUCETPAY_MIN.toLocaleString();
-    document.getElementById("directMin").innerText = DIRECT_WALLET_MIN.toLocaleString();
-    document.getElementById("directFee").innerText = DIRECT_WALLET_FEE.toLocaleString();
-    document.getElementById("directFee2").innerText = DIRECT_WALLET_FEE.toLocaleString();
-}
 
 // ========== HELPER FUNCTIONS ==========
 function showMessage(msg) {
@@ -348,6 +317,18 @@ function updateUI() {
     document.getElementById("userName").innerText = userData.first_name;
     document.getElementById("userId").innerText = userData.telegram_id;
     document.getElementById("dogeValue").innerText = dogeValue.toFixed(8);
+}
+
+function getCurrentHourStart() {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    return now.getTime();
+}
+
+function getCurrentDayStart() {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now.getTime();
 }
 
 // ========== ADSGRAM SETUP ==========
@@ -522,7 +503,8 @@ async function loadUserFromDB(telegramId) {
         
         if (result.ok && result.user) {
             Object.assign(userData, result.user);
-            console.log("📥 Loaded from DB via API:", userData.total_coins, "coins");
+            console.log("📥 Loaded from DB:", userData.total_coins, "coins");
+            console.log("Hourly ads:", userData.hourly_bonus_ads, "Daily ads:", userData.daily_challenge_ads);
         } else {
             await createNewUser(telegramId);
             await loadUserFromDB(telegramId);
@@ -559,12 +541,42 @@ async function createNewUser(telegramId) {
             referral_coins: 0,
             last_daily_bonus: null,
             task_join_channel: false,
-            hourly_bonus_claim_time: null,
             hourly_bonus_ads: 0,
+            hourly_bonus_claim_time: null,
+            hourly_bonus_last_claim_time: null,
+            daily_challenge_ads: 0,
             daily_challenge_claim_time: null,
-            daily_challenge_ads: 0
+            daily_challenge_last_claim_time: null
         })
     });
+}
+
+async function updateUserInDB() {
+    try {
+        const response = await fetch(`${API_URL}/api/user/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: userData.telegram_id,
+                total_coins: userData.total_coins,
+                watched_count: userData.watched_count,
+                referral_coins: userData.referral_coins,
+                last_daily_bonus: userData.last_daily_bonus,
+                task_join_channel: userData.task_join_channel,
+                hourly_bonus_ads: userData.hourly_bonus_ads,
+                hourly_bonus_claim_time: userData.hourly_bonus_claim_time,
+                hourly_bonus_last_claim_time: userData.hourly_bonus_last_claim_time,
+                daily_challenge_ads: userData.daily_challenge_ads,
+                daily_challenge_claim_time: userData.daily_challenge_claim_time,
+                daily_challenge_last_claim_time: userData.daily_challenge_last_claim_time
+            })
+        });
+        if (response.ok) {
+            console.log("✅ User data saved to DB");
+        }
+    } catch (error) {
+        console.error("Error updating user:", error);
+    }
 }
 
 // ========== REFERRAL ==========
@@ -688,7 +700,7 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json', 
-            apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
+            'apikey': 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
             Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
             Prefer: 'return=minimal'
         },
@@ -923,13 +935,22 @@ async function verifyChannelMembership() {
     }
 }
 
-// ========== DAILY BONUS ==========
+// ========== DAILY BONUS (24 HOUR COOLDOWN) ==========
 function canClaimDailyBonus() {
     if (!userData.last_daily_bonus) return true;
     const lastClaim = new Date(userData.last_daily_bonus);
     const now = new Date();
     const hoursDiff = (now - lastClaim) / (1000 * 60 * 60);
     return hoursDiff >= 24;
+}
+
+function getDailyBonusRemainingTime() {
+    if (!userData.last_daily_bonus) return 0;
+    const lastClaim = new Date(userData.last_daily_bonus);
+    const now = new Date();
+    const hoursPassed = (now - lastClaim) / (1000 * 60 * 60);
+    const remaining = 24 - hoursPassed;
+    return remaining > 0 ? remaining : 0;
 }
 
 function updateDailyBonusUI() {
@@ -942,101 +963,228 @@ function updateDailyBonusUI() {
     } else {
         btn.disabled = true;
         btn.style.opacity = "0.5";
-        const remaining = 24 - ((new Date() - new Date(userData.last_daily_bonus)) / (1000 * 60 * 60));
+        const remaining = getDailyBonusRemainingTime();
         const hours = Math.floor(remaining);
         const minutes = Math.floor((remaining - hours) * 60);
-        countdownDiv.innerHTML = `⏰ Next: ${hours}h ${minutes}m`;
+        countdownDiv.innerHTML = `⏰ Next bonus available in: ${hours}h ${minutes}m`;
     }
 }
 
-// ========== HOURLY BONUS & DAILY CHALLENGE ==========
+// ========== HOURLY BONUS (TIMER RESETS EVERY HOUR, INDEPENDENT OF CLAIM) ==========
 function updateHourlyBonusUI() {
     const btn = document.getElementById("hourlyBonusBtn");
     const countdownDiv = document.getElementById("hourlyCountdown");
     const progressSpan = document.getElementById("hourlyAdCount");
+    
     progressSpan.innerText = userData.hourly_bonus_ads || 0;
     
     const now = Date.now();
-    const lastClaimStr = userData.hourly_bonus_claim_time;
-    let lastClaim = lastClaimStr ? new Date(lastClaimStr).getTime() : 0;
-    if (isNaN(lastClaim)) lastClaim = 0;
+    const currentHourStart = getCurrentHourStart();
+    const nextHourStart = currentHourStart + (60 * 60 * 1000);
+    const remainingMs = nextHourStart - now;
     
-    const hourMs = 60 * 60 * 1000;
-    const timeSince = now - lastClaim;
+    const minutes = Math.floor(remainingMs / 60000);
+    const seconds = Math.floor((remainingMs % 60000) / 1000);
+    countdownDiv.innerHTML = `⏰ Time remaining in this hour: ${minutes}m ${seconds}s`;
     
-    if (lastClaim === 0 || timeSince >= hourMs) {
-        userData.hourly_bonus_ads = 0;
-        userData.hourly_bonus_claim_time = new Date().toISOString();
-        progressSpan.innerText = 0;
-        countdownDiv.innerHTML = "✨ New hour! Watch 50 ads to claim 500 coins! ✨";
+    // Check if user already claimed this hour
+    let hasClaimedThisHour = false;
+    if (userData.hourly_bonus_last_claim_time) {
+        const lastClaimTime = new Date(userData.hourly_bonus_last_claim_time).getTime();
+        hasClaimedThisHour = lastClaimTime >= currentHourStart;
+    }
+    
+    const hasEnoughAds = (userData.hourly_bonus_ads || 0) >= HOURLY_BONUS_REQUIREMENT;
+    
+    if (hasEnoughAds && !hasClaimedThisHour) {
         btn.disabled = false;
         btn.style.opacity = "1";
     } else {
-        const remaining = hourMs - timeSince;
-        const minutes = Math.floor(remaining / 60000);
-        const seconds = Math.floor((remaining % 60000) / 1000);
-        countdownDiv.innerHTML = `⏰ Time: ${minutes}m ${seconds}s`;
-        btn.disabled = (userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT;
-        btn.style.opacity = btn.disabled ? "0.5" : "1";
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
     }
 }
 
+// ========== DAILY CHALLENGE (TIMER RESETS EVERY 24 HOURS, INDEPENDENT OF CLAIM) ==========
 function updateDailyChallengeUI() {
     const btn = document.getElementById("dailyChallengeBtn");
     const countdownDiv = document.getElementById("dailyChallengeCountdown");
     const progressSpan = document.getElementById("dailyChallengeAdCount");
+    
     progressSpan.innerText = userData.daily_challenge_ads || 0;
     
     const now = Date.now();
-    const lastClaimStr = userData.daily_challenge_claim_time;
-    let lastClaim = lastClaimStr ? new Date(lastClaimStr).getTime() : 0;
-    if (isNaN(lastClaim)) lastClaim = 0;
+    const currentDayStart = getCurrentDayStart();
+    const nextDayStart = currentDayStart + (24 * 60 * 60 * 1000);
+    const remainingMs = nextDayStart - now;
     
-    const dayMs = 24 * 60 * 60 * 1000;
-    const timeSince = now - lastClaim;
+    const hours = Math.floor(remainingMs / 3600000);
+    const minutes = Math.floor((remainingMs % 3600000) / 60000);
+    countdownDiv.innerHTML = `⏰ Time remaining today: ${hours}h ${minutes}m`;
     
-    if (lastClaim === 0 || timeSince >= dayMs) {
-        userData.daily_challenge_ads = 0;
-        userData.daily_challenge_claim_time = new Date().toISOString();
-        progressSpan.innerText = 0;
-        countdownDiv.innerHTML = "✨ New day! Watch 200 ads to claim 1000 coins! ✨";
+    // Check if user already claimed today
+    let hasClaimedToday = false;
+    if (userData.daily_challenge_last_claim_time) {
+        const lastClaimTime = new Date(userData.daily_challenge_last_claim_time).getTime();
+        hasClaimedToday = lastClaimTime >= currentDayStart;
+    }
+    
+    const hasEnoughAds = (userData.daily_challenge_ads || 0) >= DAILY_CHALLENGE_REQUIREMENT;
+    
+    if (hasEnoughAds && !hasClaimedToday) {
         btn.disabled = false;
         btn.style.opacity = "1";
     } else {
-        const remaining = dayMs - timeSince;
-        const hours = Math.floor(remaining / 3600000);
-        const minutes = Math.floor((remaining % 3600000) / 60000);
-        countdownDiv.innerHTML = `⏰ Time: ${hours}h ${minutes}m`;
-        btn.disabled = (userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT;
-        btn.style.opacity = btn.disabled ? "0.5" : "1";
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
     }
 }
 
-function incrementAdCounters() {
-    const nowISO = new Date().toISOString();
-    const nowTs = Date.now();
+// ========== INCREMENT AD COUNTERS ==========
+async function incrementAdCounters() {
+    const now = Date.now();
+    const currentHourStart = getCurrentHourStart();
+    const currentDayStart = getCurrentDayStart();
     
-    let lastHourly = userData.hourly_bonus_claim_time ? new Date(userData.hourly_bonus_claim_time).getTime() : 0;
-    if (nowTs - lastHourly < 60 * 60 * 1000) {
-        userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
-    } else {
+    // Hourly counter - reset if new hour
+    let lastHourlyReset = userData.hourly_bonus_claim_time;
+    if (!lastHourlyReset || new Date(lastHourlyReset).getTime() < currentHourStart) {
         userData.hourly_bonus_ads = 1;
-        userData.hourly_bonus_claim_time = nowISO;
-    }
-    
-    let lastDaily = userData.daily_challenge_claim_time ? new Date(userData.daily_challenge_claim_time).getTime() : 0;
-    if (nowTs - lastDaily < 24 * 60 * 60 * 1000) {
-        userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
+        userData.hourly_bonus_claim_time = new Date().toISOString();
     } else {
-        userData.daily_challenge_ads = 1;
-        userData.daily_challenge_claim_time = nowISO;
+        userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
     }
     
+    // Daily challenge counter - reset if new day
+    let lastDailyReset = userData.daily_challenge_claim_time;
+    if (!lastDailyReset || new Date(lastDailyReset).getTime() < currentDayStart) {
+        userData.daily_challenge_ads = 1;
+        userData.daily_challenge_claim_time = new Date().toISOString();
+    } else {
+        userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
+    }
+    
+    console.log(`Hourly: ${userData.hourly_bonus_ads}, Daily: ${userData.daily_challenge_ads}`);
+    await updateUserInDB();
     updateHourlyBonusUI();
     updateDailyChallengeUI();
 }
 
-// ================= WATCH AD (WITH CLAIM REWARD) =================
+// ========== CLAIM HOURLY BONUS ==========
+async function claimHourlyBonusWithCaptcha() {
+    const currentHourStart = getCurrentHourStart();
+    let hasClaimedThisHour = false;
+    if (userData.hourly_bonus_last_claim_time) {
+        const lastClaimTime = new Date(userData.hourly_bonus_last_claim_time).getTime();
+        hasClaimedThisHour = lastClaimTime >= currentHourStart;
+    }
+    
+    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
+        showMessage(`❌ Need ${HOURLY_BONUS_REQUIREMENT} ads this hour! Current: ${userData.hourly_bonus_ads || 0}`);
+        return;
+    }
+    
+    if (hasClaimedThisHour) {
+        showMessage("❌ You already claimed hourly bonus this hour! Wait for next hour.");
+        return;
+    }
+
+    showCaptcha((success) => {
+        if (success) {
+            showRewardAdWithInterstitial(async () => {
+                const actionId = crypto.randomUUID();
+                const result = await claimReward(userData.telegram_id, HOURLY_BONUS_REWARD, actionId);
+                
+                if (result.ok) {
+                    userData.hourly_bonus_last_claim_time = new Date().toISOString();
+                    await updateUserInDB();
+                    updateUI();
+                    updateHourlyBonusUI();
+                    showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus! Come back next hour!`);
+                } else if (result.error === "duplicate") {
+                    showMessage("⚠️ Already claimed!");
+                } else {
+                    showMessage("❌ Failed to claim hourly bonus!");
+                }
+            });
+        }
+    });
+}
+
+// ========== CLAIM DAILY CHALLENGE ==========
+async function claimDailyChallengeWithCaptcha() {
+    const currentDayStart = getCurrentDayStart();
+    let hasClaimedToday = false;
+    if (userData.daily_challenge_last_claim_time) {
+        const lastClaimTime = new Date(userData.daily_challenge_last_claim_time).getTime();
+        hasClaimedToday = lastClaimTime >= currentDayStart;
+    }
+    
+    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
+        showMessage(`❌ Need ${DAILY_CHALLENGE_REQUIREMENT} ads today! Current: ${userData.daily_challenge_ads || 0}`);
+        return;
+    }
+    
+    if (hasClaimedToday) {
+        showMessage("❌ You already claimed daily challenge today! Come back tomorrow.");
+        return;
+    }
+
+    showCaptcha((success) => {
+        if (success) {
+            showRewardAdWithInterstitial(async () => {
+                const actionId = crypto.randomUUID();
+                const result = await claimReward(userData.telegram_id, DAILY_CHALLENGE_REWARD, actionId);
+                
+                if (result.ok) {
+                    userData.daily_challenge_last_claim_time = new Date().toISOString();
+                    await updateUserInDB();
+                    updateUI();
+                    updateDailyChallengeUI();
+                    showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge! Come back tomorrow!`);
+                } else if (result.error === "duplicate") {
+                    showMessage("⚠️ Already claimed!");
+                } else {
+                    showMessage("❌ Failed to claim daily challenge!");
+                }
+            });
+        }
+    });
+}
+
+// ========== CLAIM DAILY BONUS ==========
+async function claimDailyBonusWithAds() {
+    if (!canClaimDailyBonus()) {
+        const remaining = getDailyBonusRemainingTime();
+        const hours = Math.floor(remaining);
+        const minutes = Math.floor((remaining - hours) * 60);
+        showMessage(`❌ Already claimed! Next bonus in ${hours}h ${minutes}m`);
+        return;
+    }
+
+    showCaptcha(async (success) => {
+        if (!success) return;
+
+        showRewardAdWithInterstitial(async () => {
+            const actionId = crypto.randomUUID();
+            const result = await claimReward(userData.telegram_id, DAILY_BONUS, actionId);
+            
+            if (result.ok) {
+                userData.last_daily_bonus = new Date().toISOString();
+                await updateUserInDB();
+                updateUI();
+                updateDailyBonusUI();
+                showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus! Come back tomorrow!`);
+            } else if (result.error === "duplicate") {
+                showMessage("⚠️ Already claimed!");
+            } else {
+                showMessage("❌ Failed to claim daily bonus!");
+            }
+        });
+    });
+}
+
+// ================= WATCH AD =================
 async function watchAdWithSequentialAds() {
     showCaptcha(async (success) => {
         if (!success) {
@@ -1050,7 +1198,8 @@ async function watchAdWithSequentialAds() {
             
             if (result.ok) {
                 userData.watched_count++;
-                await loadUserFromDB(userData.telegram_id);
+                await incrementAdCounters();
+                await updateUserInDB();
                 updateUI();
                 updateHourlyBonusUI();
                 updateDailyChallengeUI();
@@ -1061,95 +1210,6 @@ async function watchAdWithSequentialAds() {
                 showMessage("❌ Failed to claim reward!");
             }
         });
-    });
-}
-
-// ================= DAILY BONUS (WITH CLAIM REWARD) =================
-async function claimDailyBonusWithAds() {
-    if (!canClaimDailyBonus()) {
-        showMessage("❌ Already claimed! Come back tomorrow.");
-        return;
-    }
-
-    showCaptcha(async (success) => {
-        if (!success) return;
-
-        showRewardAdWithInterstitial(async () => {
-            const actionId = crypto.randomUUID();
-            const result = await claimReward(userData.telegram_id, DAILY_BONUS, actionId);
-            
-            if (result.ok) {
-                userData.last_daily_bonus = new Date().toISOString();
-                await loadUserFromDB(userData.telegram_id);
-                updateUI();
-                updateDailyBonusUI();
-                showMessage(`✅ +${DAILY_BONUS} Coins from daily bonus!`);
-            } else if (result.error === "duplicate") {
-                showMessage("⚠️ Already claimed!");
-            } else {
-                showMessage("❌ Failed to claim daily bonus!");
-            }
-        });
-    });
-}
-
-// ================= HOURLY BONUS (WITH CLAIM REWARD) =================
-async function claimHourlyBonusWithCaptcha() {
-    if ((userData.hourly_bonus_ads || 0) < HOURLY_BONUS_REQUIREMENT) {
-        showMessage(`❌ Need ${HOURLY_BONUS_REQUIREMENT} ads this hour!`);
-        return;
-    }
-
-    showCaptcha((success) => {
-        if (success) {
-            showRewardAdWithInterstitial(async () => {
-                const actionId = crypto.randomUUID();
-                const result = await claimReward(userData.telegram_id, HOURLY_BONUS_REWARD, actionId);
-                
-                if (result.ok) {
-                    userData.hourly_bonus_ads = 0;
-                    userData.hourly_bonus_claim_time = new Date().toISOString();
-                    await loadUserFromDB(userData.telegram_id);
-                    updateUI();
-                    updateHourlyBonusUI();
-                    showMessage(`✅ +${HOURLY_BONUS_REWARD} Coins from Hourly Bonus!`);
-                } else if (result.error === "duplicate") {
-                    showMessage("⚠️ Already claimed!");
-                } else {
-                    showMessage("❌ Failed to claim hourly bonus!");
-                }
-            });
-        }
-    });
-}
-
-// ================= DAILY CHALLENGE (WITH CLAIM REWARD) =================
-async function claimDailyChallengeWithCaptcha() {
-    if ((userData.daily_challenge_ads || 0) < DAILY_CHALLENGE_REQUIREMENT) {
-        showMessage(`❌ Need ${DAILY_CHALLENGE_REQUIREMENT} ads today!`);
-        return;
-    }
-
-    showCaptcha((success) => {
-        if (success) {
-            showRewardAdWithInterstitial(async () => {
-                const actionId = crypto.randomUUID();
-                const result = await claimReward(userData.telegram_id, DAILY_CHALLENGE_REWARD, actionId);
-                
-                if (result.ok) {
-                    userData.daily_challenge_ads = 0;
-                    userData.daily_challenge_claim_time = new Date().toISOString();
-                    await loadUserFromDB(userData.telegram_id);
-                    updateUI();
-                    updateDailyChallengeUI();
-                    showMessage(`✅ +${DAILY_CHALLENGE_REWARD} Coins from Daily Challenge!`);
-                } else if (result.error === "duplicate") {
-                    showMessage("⚠️ Already claimed!");
-                } else {
-                    showMessage("❌ Failed to claim daily challenge!");
-                }
-            });
-        }
     });
 }
 
@@ -1187,7 +1247,7 @@ function setupTaskAdHandler() {
             
             if (result.ok) {
                 userData.watched_count++;
-                await loadUserFromDB(userData.telegram_id);
+                await updateUserInDB();
                 updateUI();
                 showMessage("🎉 +20 Coins from task!");
             } else if (result.error === "duplicate") {
@@ -1199,25 +1259,19 @@ function setupTaskAdHandler() {
     }
 }
 
-// ================= AUTO SYNC (WITH LOCK) =================
+// ================= AUTO SYNC =================
 setInterval(async () => {
     if (!userData.telegram_id || isUpdating) return;
-
     isUpdating = true;
-
     try {
         await loadUserFromDB(userData.telegram_id);
     } finally {
         isUpdating = false;
     }
-
 }, 30000);
 
 // ========== INITIALIZATION ==========
 async function init() {
-    // نمایش مقادیر ثابت در صفحه
-    updateConstantsDisplay();
-    
     initTabs();
     initAdsgramReward();
     initInterstitialAd();
