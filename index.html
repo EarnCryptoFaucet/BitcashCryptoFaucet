@@ -94,7 +94,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         <p style="font-size: 13px; opacity: 0.7;">💰 Watch more, earn more! No limits!</p>
         
         <div class="coin-rate">
-          💱 <strong>10 Coins = 0.0001 DOGE</strong> 💱
+          💱 <strong>10 Coins = <span id="dogeRateDisplay">0.0001</span> DOGE</strong> 💱
         </div>
         
         <div style="margin: 20px 0;">
@@ -262,7 +262,7 @@ const TASK_JOIN_CHANNEL_REWARD = 20;
 const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
-const DOGE_RATE = 0.00015;
+const DOGE_RATE = 0.0001;  // ← تغییر این عدد، قیمت صفحه هوم خودکار عوض می‌شود
 const WITHDRAW_HISTORY_DAYS = 3;
 const TAB_TIMEOUT = 30000;
 const HOURLY_BONUS_REQUIREMENT = 50;
@@ -318,6 +318,7 @@ function updateUI() {
     document.getElementById("userName").innerText = userData.first_name;
     document.getElementById("userId").innerText = userData.telegram_id;
     document.getElementById("dogeValue").innerText = dogeValue.toFixed(8);
+    document.getElementById("dogeRateDisplay").innerText = DOGE_RATE;  // ← خودکار قیمت را آپدیت می‌کند
     document.getElementById("hourlyAdCount").innerText = userData.hourly_bonus_ads || 0;
     document.getElementById("dailyChallengeAdCount").innerText = userData.daily_challenge_ads || 0;
 }
@@ -512,6 +513,8 @@ async function updateUserInDB() {
         });
         if (response.ok) {
             console.log("✅ User data saved to DB");
+        } else {
+            console.error("Update failed:", await response.text());
         }
     } catch (error) {
         console.error("Error updating user:", error);
@@ -526,8 +529,14 @@ async function loadUserFromDB(telegramId) {
         
         if (result.ok && result.user) {
             Object.assign(userData, result.user);
-            console.log("📥 Loaded from DB:", userData.total_coins, "coins");
-            console.log("Hourly ads:", userData.hourly_bonus_ads, "Daily ads:", userData.daily_challenge_ads);
+            console.log("📥 Loaded from DB:", {
+                total_coins: userData.total_coins,
+                hourly_bonus_ads: userData.hourly_bonus_ads,
+                daily_challenge_ads: userData.daily_challenge_ads,
+                last_daily_bonus: userData.last_daily_bonus,
+                hourly_bonus_last_claim_time: userData.hourly_bonus_last_claim_time,
+                daily_challenge_last_claim_time: userData.daily_challenge_last_claim_time
+            });
         } else {
             await createNewUser(telegramId);
             await loadUserFromDB(telegramId);
@@ -1033,7 +1042,7 @@ async function incrementAdCounters() {
     const currentHourStart = getCurrentHourStart();
     const currentDayStart = getCurrentDayStart();
     
-    // Hourly counter
+    // Hourly counter - reset if new hour
     let lastHourlyReset = userData.hourly_bonus_claim_time;
     if (!lastHourlyReset || new Date(lastHourlyReset).getTime() < currentHourStart) {
         userData.hourly_bonus_ads = 1;
@@ -1042,7 +1051,7 @@ async function incrementAdCounters() {
         userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
     }
     
-    // Daily challenge counter
+    // Daily challenge counter - reset if new day
     let lastDailyReset = userData.daily_challenge_claim_time;
     if (!lastDailyReset || new Date(lastDailyReset).getTime() < currentDayStart) {
         userData.daily_challenge_ads = 1;
