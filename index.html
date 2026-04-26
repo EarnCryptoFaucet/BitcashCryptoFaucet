@@ -111,12 +111,13 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         </p>
       </div>
       
+      <!-- Hourly Bonus Card -->
       <div class="card bonus-card">
         <span style="font-size: 40px;">⏰</span>
         <h3>Hourly Bonus</h3>
         <p>Watch <strong id="hourlyReq">50</strong> ads in <strong>1 hour</strong> and earn <strong id="hourlyRewardDisplay">500</strong> Coins!</p>
         <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#ff9800,#f57c00);">
-          🎯 Your progress: <span id="hourlyAdCount">0</span> / <span id="hourlyReq2">50</span> ads this hour
+          🎯 Ads this hour: <span id="hourlyAdCount">0</span> / <span id="hourlyReq2">50</span>
         </div>
         <button class="watch-btn" id="hourlyBonusBtn" style="background: linear-gradient(135deg,#ff9800,#f57c00);">
           🎁 CLAIM HOURLY BONUS (<span id="hourlyRewardBtn">500</span> COINS) 🎁
@@ -125,12 +126,13 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         <div class="bonus-requirement">⏰ Timer resets every hour | Can claim once per hour</div>
       </div>
       
+      <!-- Daily Challenge Card -->
       <div class="card bonus-card">
         <span style="font-size: 40px;">📅</span>
         <h3>Daily Challenge</h3>
         <p>Watch <strong id="dailyReq">200</strong> ads in <strong>24 hours</strong> and earn <strong id="dailyRewardDisplay">1000</strong> Coins!</p>
         <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#2196f3,#1976d2);">
-          🎯 Your progress: <span id="dailyChallengeAdCount">0</span> / <span id="dailyReq2">200</span> ads today
+          🎯 Ads today: <span id="dailyChallengeAdCount">0</span> / <span id="dailyReq2">200</span>
         </div>
         <button class="watch-btn" id="dailyChallengeBtn" style="background: linear-gradient(135deg,#2196f3,#1976d2);">
           🎁 CLAIM DAILY CHALLENGE (<span id="dailyRewardBtn">1000</span> COINS) 🎁
@@ -295,6 +297,8 @@ let adsgramController = null;
 let interstitialController = null;
 let hourlyTimerInterval = null;
 let dailyTimerInterval = null;
+let hourlyResetInterval = null;
+let dailyResetInterval = null;
 let isUpdating = false;
 
 // ========== HELPER FUNCTIONS ==========
@@ -318,8 +322,6 @@ function updateUI() {
     document.getElementById("userId").innerText = userData.telegram_id;
     document.getElementById("dogeValue").innerText = dogeValue.toFixed(8);
     document.getElementById("dogeRateDisplay").innerText = DOGE_RATE;
-    document.getElementById("hourlyAdCount").innerText = userData.hourly_bonus_ads || 0;
-    document.getElementById("dailyChallengeAdCount").innerText = userData.daily_challenge_ads || 0;
 }
 
 function getCurrentHourStart() {
@@ -474,7 +476,7 @@ function shareInviteLink() {
     }
 }
 
-// ================= CLAIM REWARD VIA API (FIXED) =================
+// ================= CLAIM REWARD VIA API =================
 async function claimReward(userId, amount, actionId) {
     try {
         const response = await fetch(`${API_URL}/api/claim-reward`, {
@@ -486,7 +488,6 @@ async function claimReward(userId, amount, actionId) {
         console.log("Claim reward API response:", result);
         
         if (result.ok && result.newCoins !== undefined) {
-            // Update local userData with the new coins from server
             userData.total_coins = result.newCoins;
             console.log("Updated userData.total_coins to:", userData.total_coins);
         }
@@ -703,7 +704,7 @@ async function saveWithdrawRequest(type, amount, walletAddress) {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json', 
-            apikey: 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
+            'apikey': 'sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn', 
             Authorization: 'Bearer sb_publishable_SFZv_qcbdsO1sv1cHitKZw_V7W25RIn',
             Prefer: 'return=minimal'
         },
@@ -938,7 +939,7 @@ async function verifyChannelMembership() {
     }
 }
 
-// ========== DAILY BONUS ==========
+// ========== DAILY BONUS (24 HOUR COOLDOWN) ==========
 function canClaimDailyBonus() {
     if (!userData.last_daily_bonus) return true;
     const lastClaim = new Date(userData.last_daily_bonus);
@@ -973,7 +974,48 @@ function updateDailyBonusUI() {
     }
 }
 
-// ========== HOURLY BONUS ==========
+// ========== AUTO RESET FUNCTIONS (FIXED) ==========
+function autoResetHourlyCounter() {
+    const now = Date.now();
+    const currentHourStart = getCurrentHourStart();
+    const lastReset = userData.hourly_bonus_claim_time;
+    
+    // If last reset was before current hour start, reset the counter
+    if (!lastReset || new Date(lastReset).getTime() < currentHourStart) {
+        if (userData.hourly_bonus_ads !== 0) {
+            userData.hourly_bonus_ads = 0;
+            userData.hourly_bonus_claim_time = new Date().toISOString();
+            updateUserInDB();
+            console.log("🔄 Hourly counter auto-reset at new hour");
+        } else if (!lastReset) {
+            userData.hourly_bonus_claim_time = new Date().toISOString();
+            updateUserInDB();
+        }
+    }
+    updateHourlyBonusUI();
+}
+
+function autoResetDailyCounter() {
+    const now = Date.now();
+    const currentDayStart = getCurrentDayStart();
+    const lastReset = userData.daily_challenge_claim_time;
+    
+    // If last reset was before current day start, reset the counter
+    if (!lastReset || new Date(lastReset).getTime() < currentDayStart) {
+        if (userData.daily_challenge_ads !== 0) {
+            userData.daily_challenge_ads = 0;
+            userData.daily_challenge_claim_time = new Date().toISOString();
+            updateUserInDB();
+            console.log("🔄 Daily counter auto-reset at new day");
+        } else if (!lastReset) {
+            userData.daily_challenge_claim_time = new Date().toISOString();
+            updateUserInDB();
+        }
+    }
+    updateDailyChallengeUI();
+}
+
+// ========== HOURLY BONUS UI ==========
 function updateHourlyBonusUI() {
     const btn = document.getElementById("hourlyBonusBtn");
     const countdownDiv = document.getElementById("hourlyCountdown");
@@ -990,6 +1032,7 @@ function updateHourlyBonusUI() {
     const seconds = Math.floor((remainingMs % 60000) / 1000);
     countdownDiv.innerHTML = `⏰ Time remaining in this hour: ${minutes}m ${seconds}s`;
     
+    // Check if user already claimed bonus this hour
     let hasClaimedThisHour = false;
     if (userData.hourly_bonus_last_claim_time) {
         const lastClaimTime = new Date(userData.hourly_bonus_last_claim_time).getTime();
@@ -1007,7 +1050,7 @@ function updateHourlyBonusUI() {
     }
 }
 
-// ========== DAILY CHALLENGE ==========
+// ========== DAILY CHALLENGE UI ==========
 function updateDailyChallengeUI() {
     const btn = document.getElementById("dailyChallengeBtn");
     const countdownDiv = document.getElementById("dailyChallengeCountdown");
@@ -1024,6 +1067,7 @@ function updateDailyChallengeUI() {
     const minutes = Math.floor((remainingMs % 3600000) / 60000);
     countdownDiv.innerHTML = `⏰ Time remaining today: ${hours}h ${minutes}m`;
     
+    // Check if user already claimed today
     let hasClaimedToday = false;
     if (userData.daily_challenge_last_claim_time) {
         const lastClaimTime = new Date(userData.daily_challenge_last_claim_time).getTime();
@@ -1041,28 +1085,19 @@ function updateDailyChallengeUI() {
     }
 }
 
-// ========== INCREMENT AD COUNTERS ==========
+// ========== INCREMENT AD COUNTERS (WITHOUT AUTO-RESET LOGIC - JUST COUNT) ==========
 async function incrementAdCounters() {
-    const now = Date.now();
-    const currentHourStart = getCurrentHourStart();
-    const currentDayStart = getCurrentDayStart();
+    // Simply increment the counters - no reset logic here
+    // Reset happens automatically via autoResetHourlyCounter and autoResetDailyCounter
+    userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
+    userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
     
-    // Hourly counter
-    let lastHourlyReset = userData.hourly_bonus_claim_time;
-    if (!lastHourlyReset || new Date(lastHourlyReset).getTime() < currentHourStart) {
-        userData.hourly_bonus_ads = 1;
+    // Update claim_time if not set
+    if (!userData.hourly_bonus_claim_time) {
         userData.hourly_bonus_claim_time = new Date().toISOString();
-    } else {
-        userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
     }
-    
-    // Daily challenge counter
-    let lastDailyReset = userData.daily_challenge_claim_time;
-    if (!lastDailyReset || new Date(lastDailyReset).getTime() < currentDayStart) {
-        userData.daily_challenge_ads = 1;
+    if (!userData.daily_challenge_claim_time) {
         userData.daily_challenge_claim_time = new Date().toISOString();
-    } else {
-        userData.daily_challenge_ads = (userData.daily_challenge_ads || 0) + 1;
     }
     
     console.log(`Hourly: ${userData.hourly_bonus_ads}, Daily: ${userData.daily_challenge_ads}`);
@@ -1185,7 +1220,7 @@ async function claimDailyBonusWithAds() {
     });
 }
 
-// ================= WATCH AD (FIXED) =================
+// ================= WATCH AD =================
 async function watchAdWithSequentialAds() {
     showCaptcha(async (success) => {
         if (!success) {
@@ -1200,7 +1235,6 @@ async function watchAdWithSequentialAds() {
             console.log("Claim result:", result);
             
             if (result.ok) {
-                // سکه قبلاً در تابع claimReward به userData.total_coins اضافه شده
                 userData.watched_count++;
                 await incrementAdCounters();
                 await updateUserInDB();
@@ -1240,8 +1274,16 @@ function initTabs() {
 function startTimers() {
     if (hourlyTimerInterval) clearInterval(hourlyTimerInterval);
     if (dailyTimerInterval) clearInterval(dailyTimerInterval);
+    if (hourlyResetInterval) clearInterval(hourlyResetInterval);
+    if (dailyResetInterval) clearInterval(dailyResetInterval);
+    
+    // UI update timers (every second)
     hourlyTimerInterval = setInterval(() => updateHourlyBonusUI(), 1000);
     dailyTimerInterval = setInterval(() => updateDailyChallengeUI(), 1000);
+    
+    // Auto-reset timers (check every 10 seconds)
+    hourlyResetInterval = setInterval(() => autoResetHourlyCounter(), 10000);
+    dailyResetInterval = setInterval(() => autoResetDailyCounter(), 10000);
 }
 
 function setupTaskAdHandler() {
