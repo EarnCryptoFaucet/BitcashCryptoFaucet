@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Telegram Mini App - Watch & Earn</title>
 <style>
-/* ========== YOUR EXISTING STYLES (KEEP AS IS) ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui;background:linear-gradient(145deg,#1a1e2b,#0f121c);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center}
 .app-container{max-width:500px;width:100%;background:rgba(18,22,35,0.7);backdrop-filter:blur(10px);border-radius:32px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -115,12 +114,12 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
       <div class="card bonus-card">
         <span style="font-size: 40px;">⏰</span>
         <h3>Hourly Bonus</h3>
-        <p>Watch <strong>50 ads</strong> in <strong>1 hour</strong> and earn <strong>500 Coins</strong>!</p>
+        <p>Watch <strong id="hourlyReq">50</strong> ads in <strong>1 hour</strong> and earn <strong id="hourlyRewardDisplay">500</strong> Coins!</p>
         <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#ff9800,#f57c00);">
-          🎯 Your progress: <span id="hourlyAdCount">0</span> / 50 ads this hour
+          🎯 Your progress: <span id="hourlyAdCount">0</span> / <span id="hourlyReq2">50</span> ads this hour
         </div>
         <button class="watch-btn" id="hourlyBonusBtn" style="background: linear-gradient(135deg,#ff9800,#f57c00);">
-          🎁 CLAIM HOURLY BONUS (500 COINS) 🎁
+          🎁 CLAIM HOURLY BONUS (<span id="hourlyRewardBtn">500</span> COINS) 🎁
         </button>
         <div id="hourlyCountdown" class="bonus-countdown"></div>
         <div class="bonus-requirement">⏰ Timer resets every hour | Can claim once per hour</div>
@@ -129,12 +128,12 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
       <div class="card bonus-card">
         <span style="font-size: 40px;">📅</span>
         <h3>Daily Challenge</h3>
-        <p>Watch <strong>200 ads</strong> in <strong>24 hours</strong> and earn <strong>1000 Coins</strong>!</p>
+        <p>Watch <strong id="dailyReq">200</strong> ads in <strong>24 hours</strong> and earn <strong id="dailyRewardDisplay">1000</strong> Coins!</p>
         <div class="coin-badge" style="margin: 10px 0; background: linear-gradient(135deg,#2196f3,#1976d2);">
-          🎯 Your progress: <span id="dailyChallengeAdCount">0</span> / 200 ads today
+          🎯 Your progress: <span id="dailyChallengeAdCount">0</span> / <span id="dailyReq2">200</span> ads today
         </div>
         <button class="watch-btn" id="dailyChallengeBtn" style="background: linear-gradient(135deg,#2196f3,#1976d2);">
-          🎁 CLAIM DAILY CHALLENGE (1000 COINS) 🎁
+          🎁 CLAIM DAILY CHALLENGE (<span id="dailyRewardBtn">1000</span> COINS) 🎁
         </button>
         <div id="dailyChallengeCountdown" class="bonus-countdown"></div>
         <div class="bonus-requirement">📅 Timer resets every 24 hours | Can claim once per day</div>
@@ -162,7 +161,7 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
     <div class="tab-pane" id="referral-tab">
       <div class="card">
         <h3 style="margin-bottom: 10px;">👥 Invite Friends</h3>
-        <p style="opacity: 0.8;">Get <strong>100 bonus coins</strong> per referral!</p>
+        <p style="opacity: 0.8;">Get <strong id="referralBonusDisplay">100</strong> bonus coins per referral!</p>
         <div class="coin-badge" style="margin: 15px 0;">
           🏆 Referral Coins: <span id="refCoinsEarned">0</span>
         </div>
@@ -207,13 +206,13 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
         
         <div class="withdraw-option" id="faucetpayOption" data-type="faucetpay" data-min="5000">
           <h4>💧 FaucetPay Wallet</h4>
-          <p style="font-size: 12px; opacity: 0.7;">Min: <strong>5,000 coins</strong> | Processing: 24 hours</p>
+          <p style="font-size: 12px; opacity: 0.7;">Min: <strong id="faucetMin">5,000</strong> coins | Processing: 24 hours</p>
         </div>
         
         <div class="withdraw-option" id="directOption" data-type="direct" data-min="100000">
           <h4>💰 Direct Wallet (DOGE)</h4>
-          <p style="font-size: 12px; opacity: 0.7;">Min: <strong>100,000 coins</strong> | Network fee: <strong>35,000 coins</strong></p>
-          <p style="font-size: 11px; color: #ff9800;">⚠️ Total deducted: amount + 35,000 coins network fee</p>
+          <p style="font-size: 12px; opacity: 0.7;">Min: <strong id="directMin">100,000</strong> coins | Network fee: <strong id="directFee">35,000</strong> coins</p>
+          <p style="font-size: 11px; color: #ff9800;">⚠️ Total deducted: amount + <span id="directFee2">35,000</span> coins network fee</p>
         </div>
         
         <hr>
@@ -262,7 +261,7 @@ const TASK_JOIN_CHANNEL_REWARD = 20;
 const PER_AD = 10;
 const DAILY_BONUS = 20;
 const REFERRAL_BONUS = 100;
-const DOGE_RATE = 0.00015;  // ← تغییر این عدد، قیمت صفحه هوم خودکار عوض می‌شود
+const DOGE_RATE = 0.0001;
 const WITHDRAW_HISTORY_DAYS = 3;
 const TAB_TIMEOUT = 30000;
 const HOURLY_BONUS_REQUIREMENT = 50;
@@ -318,7 +317,7 @@ function updateUI() {
     document.getElementById("userName").innerText = userData.first_name;
     document.getElementById("userId").innerText = userData.telegram_id;
     document.getElementById("dogeValue").innerText = dogeValue.toFixed(8);
-    document.getElementById("dogeRateDisplay").innerText = DOGE_RATE;  // ← خودکار قیمت را آپدیت می‌کند
+    document.getElementById("dogeRateDisplay").innerText = DOGE_RATE;
     document.getElementById("hourlyAdCount").innerText = userData.hourly_bonus_ads || 0;
     document.getElementById("dailyChallengeAdCount").innerText = userData.daily_challenge_ads || 0;
 }
@@ -475,7 +474,7 @@ function shareInviteLink() {
     }
 }
 
-// ================= CLAIM REWARD VIA API =================
+// ================= CLAIM REWARD VIA API (FIXED) =================
 async function claimReward(userId, amount, actionId) {
     try {
         const response = await fetch(`${API_URL}/api/claim-reward`, {
@@ -483,7 +482,16 @@ async function claimReward(userId, amount, actionId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ telegram_id: userId, reward: amount, action_id: actionId })
         });
-        return await response.json();
+        const result = await response.json();
+        console.log("Claim reward API response:", result);
+        
+        if (result.ok && result.newCoins !== undefined) {
+            // Update local userData with the new coins from server
+            userData.total_coins = result.newCoins;
+            console.log("Updated userData.total_coins to:", userData.total_coins);
+        }
+        
+        return result;
     } catch (error) {
         console.error("API error:", error);
         return { ok: false, error: "network_error" };
@@ -532,10 +540,7 @@ async function loadUserFromDB(telegramId) {
             console.log("📥 Loaded from DB:", {
                 total_coins: userData.total_coins,
                 hourly_bonus_ads: userData.hourly_bonus_ads,
-                daily_challenge_ads: userData.daily_challenge_ads,
-                last_daily_bonus: userData.last_daily_bonus,
-                hourly_bonus_last_claim_time: userData.hourly_bonus_last_claim_time,
-                daily_challenge_last_claim_time: userData.daily_challenge_last_claim_time
+                daily_challenge_ads: userData.daily_challenge_ads
             });
         } else {
             await createNewUser(telegramId);
@@ -933,7 +938,7 @@ async function verifyChannelMembership() {
     }
 }
 
-// ========== DAILY BONUS (24 HOUR COOLDOWN) ==========
+// ========== DAILY BONUS ==========
 function canClaimDailyBonus() {
     if (!userData.last_daily_bonus) return true;
     const lastClaim = new Date(userData.last_daily_bonus);
@@ -1042,7 +1047,7 @@ async function incrementAdCounters() {
     const currentHourStart = getCurrentHourStart();
     const currentDayStart = getCurrentDayStart();
     
-    // Hourly counter - reset if new hour
+    // Hourly counter
     let lastHourlyReset = userData.hourly_bonus_claim_time;
     if (!lastHourlyReset || new Date(lastHourlyReset).getTime() < currentHourStart) {
         userData.hourly_bonus_ads = 1;
@@ -1051,7 +1056,7 @@ async function incrementAdCounters() {
         userData.hourly_bonus_ads = (userData.hourly_bonus_ads || 0) + 1;
     }
     
-    // Daily challenge counter - reset if new day
+    // Daily challenge counter
     let lastDailyReset = userData.daily_challenge_claim_time;
     if (!lastDailyReset || new Date(lastDailyReset).getTime() < currentDayStart) {
         userData.daily_challenge_ads = 1;
@@ -1180,7 +1185,7 @@ async function claimDailyBonusWithAds() {
     });
 }
 
-// ================= WATCH AD =================
+// ================= WATCH AD (FIXED) =================
 async function watchAdWithSequentialAds() {
     showCaptcha(async (success) => {
         if (!success) {
@@ -1192,7 +1197,10 @@ async function watchAdWithSequentialAds() {
             const actionId = crypto.randomUUID();
             const result = await claimReward(userData.telegram_id, PER_AD, actionId);
             
+            console.log("Claim result:", result);
+            
             if (result.ok) {
+                // سکه قبلاً در تابع claimReward به userData.total_coins اضافه شده
                 userData.watched_count++;
                 await incrementAdCounters();
                 await updateUserInDB();
@@ -1202,8 +1210,10 @@ async function watchAdWithSequentialAds() {
                 showMessage(`✅ +${PER_AD} Coins! Total: ${userData.total_coins}`);
             } else if (result.error === "duplicate") {
                 showMessage("⚠️ Already claimed! Please wait.");
+            } else if (result.error === "too_fast") {
+                showMessage("⚠️ Please wait 3 seconds between requests!");
             } else {
-                showMessage("❌ Failed to claim reward!");
+                showMessage("❌ Failed to claim reward: " + (result.error || "unknown"));
             }
         });
     });
@@ -1246,8 +1256,6 @@ function setupTaskAdHandler() {
                 await updateUserInDB();
                 updateUI();
                 showMessage("🎉 +20 Coins from task!");
-            } else if (result.error === "duplicate") {
-                showMessage("⚠️ Already claimed!");
             } else {
                 showMessage("❌ Failed to claim task reward!");
             }
@@ -1273,6 +1281,21 @@ async function init() {
     initInterstitialAd();
     startTimers();
     setupTaskAdHandler();
+    
+    // Update display constants
+    document.getElementById("hourlyReq").innerText = HOURLY_BONUS_REQUIREMENT;
+    document.getElementById("hourlyReq2").innerText = HOURLY_BONUS_REQUIREMENT;
+    document.getElementById("hourlyRewardDisplay").innerText = HOURLY_BONUS_REWARD;
+    document.getElementById("hourlyRewardBtn").innerText = HOURLY_BONUS_REWARD;
+    document.getElementById("dailyReq").innerText = DAILY_CHALLENGE_REQUIREMENT;
+    document.getElementById("dailyReq2").innerText = DAILY_CHALLENGE_REQUIREMENT;
+    document.getElementById("dailyRewardDisplay").innerText = DAILY_CHALLENGE_REWARD;
+    document.getElementById("dailyRewardBtn").innerText = DAILY_CHALLENGE_REWARD;
+    document.getElementById("referralBonusDisplay").innerText = REFERRAL_BONUS;
+    document.getElementById("faucetMin").innerText = FAUCETPAY_MIN.toLocaleString();
+    document.getElementById("directMin").innerText = DIRECT_WALLET_MIN.toLocaleString();
+    document.getElementById("directFee").innerText = DIRECT_WALLET_FEE.toLocaleString();
+    document.getElementById("directFee2").innerText = DIRECT_WALLET_FEE.toLocaleString();
     
     if (window.Telegram && Telegram.WebApp) {
         Telegram.WebApp.ready();
