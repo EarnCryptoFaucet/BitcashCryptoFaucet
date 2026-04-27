@@ -69,6 +69,8 @@ hr{border:none;height:1px;background:rgba(255,255,255,0.1);margin:15px 0}
 .task-btn:disabled{opacity:0.5;cursor:not-allowed}
 .task-btn.verifying{background:#ff9800;cursor:wait}
 </style>
+<!-- AdExora Script Added -->
+<script src="https://adexora.com/cdn/ads.js?id=2016"></script>
 </head>
 <body>
 <div class="app-container">
@@ -336,6 +338,26 @@ function getCurrentDayStart() {
     return now.getTime();
 }
 
+// ========== ADEXORA AD FUNCTION (ADDED WITHOUT REMOVING ANYTHING) ==========
+async function showAdexoraAd() {
+    return new Promise((resolve, reject) => {
+        if (typeof window.showAdexora === 'function') {
+            window.showAdexora()
+                .then(() => {
+                    console.log("AdExora ad completed");
+                    resolve(true);
+                })
+                .catch((error) => {
+                    console.error("AdExora error:", error);
+                    reject(error);
+                });
+        } else {
+            console.log("AdExora not available, skipping");
+            resolve(true);
+        }
+    });
+}
+
 // ========== ADSGRAM SETUP ==========
 function initAdsgramReward() {
     if (adsgramController === null && typeof window.Adsgram !== "undefined") {
@@ -420,8 +442,18 @@ function showSequentialAds(onComplete) {
 }
 
 function showRewardAdWithInterstitial(onComplete) {
-    showInterstitialAd();
-    showSequentialAds(onComplete);
+    // First show AdExora ad (ADDED - keeping all existing code)
+    showAdexoraAd()
+        .then(() => {
+            // After AdExora, continue with existing ads
+            showInterstitialAd();
+            showSequentialAds(onComplete);
+        })
+        .catch(() => {
+            // If AdExora fails, still show existing ads
+            showInterstitialAd();
+            showSequentialAds(onComplete);
+        });
 }
 
 // ========== CAPTCHA ==========
